@@ -36,7 +36,7 @@ return [
     ],
     'crontab' => [
         'handler' => \app\service\crontab\Server::class,
-        'listen'  => 'text://127.0.0.1:2346',
+        'listen'  => 'text://'.getenv('CRONTAB_LISTEN'),
         'count'   => 1,
     ],
 ];

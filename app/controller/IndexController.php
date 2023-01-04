@@ -63,7 +63,7 @@ class IndexController {
         if ($result['code'] == 200) {
             foreach ($result['data']['data'] as $v) {
                 $v['create_time']       = date('Y-m-d H:i:s', $v['create_time']);
-                $v['last_running_time'] = date('Y-m-d H:i:s', $v['last_running_time']);
+                $v['last_running_time'] = $v['last_running_time']?date('Y-m-d H:i:s', $v['last_running_time']):'';
                 $v['status']            = $v['status'] ? '启用' : '禁用';
                 $v['node_info']         = $v['alias'] ? $v['alias'] . "({$v['host']})" : '';
                 $data[]                 = $v;
