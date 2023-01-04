@@ -1,0 +1,153 @@
+<!doctype html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="shortcut icon" href="/favicon.ico"/>
+    <title>webman</title>
+    <!-- 引入 layui.css -->
+    <link rel="stylesheet" href="//unpkg.com/layui@2.6.8/dist/css/layui.css">
+    <button type="button" class="layui-btn" id="add">添加</button>
+    <button type="button" class="layui-btn layui-btn-warm" id="node">查看节点</button>
+    <table id="demo" lay-filter="test"></table>
+    <div id="test"></div>
+    <script type="text/html" id="barDemo">
+        <a class="layui-btn layui-btn-xs" lay-event="log">查看日志</a>
+        <a class="layui-btn layui-btn-xs" lay-event="edit">编辑</a>
+        <a class="layui-btn layui-btn-danger layui-btn-xs" lay-event="del">删除</a>
+    </script>
+
+</head>
+<body>
+
+</body>
+<!-- 引入 layui.js -->
+<script src="//unpkg.com/layui@2.6.8/dist/layui.js"></script>
+<script>
+    layui.use(['table','laypage','jquery','layer','form'], function(){
+        var table = layui.table;
+        var $ = layui.$
+            ,layer = layui.layer;
+        var form = layui.form;
+        // var laypage = layui.laypage;
+        //第一个实例
+        table.render({
+            elem: '#demo'
+            ,height: 312
+            ,url: '/index/getCronList?page=1&limit=20' //数据接口
+            ,page: true //开启分页
+            ,cols: [[ //表头
+                {field: 'id', title: 'ID', width:80, fixed: 'left'}
+                ,{field: 'title', title: '标题', width:200}
+                ,{field: 'node_info', title: '所属节点', width:200}
+                ,{field: 'rule', title: '任务执行表达式', width: 200}
+                ,{field: 'target', title: '调用任务字符串', width: 300}
+                ,{field: 'remark', title: '备注', width: 200}
+                ,{field: 'status', title: '状态', width: 80}
+                ,{field: 'create_time', title: '添加时间', width: 200}
+                ,{field: 'last_running_time', title: '上次执行时间', width: 200}
+                ,{field: 'running_times', title: '执行次数', width: 200}
+                ,{fixed: 'right', width:300, align:'center', toolbar: '#barDemo'} //这里的toolbar值是模板元素的选择器
+            ]]
+        });
+        //工具条事件
+        table.on('tool(test)', function(obj){ //注：tool 是工具条事件名，test 是 table 原始容器的属性 lay-filter="对应的值"
+            var data = obj.data; //获得当前行数据
+            var layEvent = obj.event; //获得 lay-event 对应的值（也可以是表头的 event 参数对应的值）
+            var tr = obj.tr; //获得当前行 tr 的 DOM 对象（如果有的话）
+
+            if(layEvent === 'log'){ //查看
+                layer.open({
+                    type: 2,
+                    title:'定时任务日志',
+                    skin: 'layui-layer-rim', //加上边框
+                    area: ['80%', '60%'], //宽高
+                    shade: 0.2,
+                    content:'/index/getCronLog?crontab_id='+obj.data.id
+                });
+                //do somehing
+            } else if(layEvent === 'del'){ //删除
+                let d = {id:obj.data.id}
+                console.log(d)
+                layer.confirm('真的删除行么', function(index){
+                    $.ajax({
+                        url : '/index/delCrontab',
+                        type : 'post',
+                        data : d,
+                        success : function (res) {
+                            if (res.code==0){
+                                layer.msg(res.msg,{icon:5});
+                            }else{
+                                layer.msg(res.msg,{icon:6,time:2000},function () {
+                                    var index = parent.layer.getFrameIndex(window.name);
+                                    parent.layer.close(index);
+                                    window.parent.location.reload();
+                                });
+                            }
+                        }
+                    })
+
+                    //向服务端发送删除指令
+                });
+            } else if(layEvent === 'edit'){ //编辑
+                layer.open({
+                    type: 2,
+                    title:'定时任务日志',
+                    skin: 'layui-layer-rim', //加上边框
+                    area: ['850px', '700px'], //宽高
+                    shade: 0.2,
+                    content:'/index/getCron?crontab_id='+obj.data.id
+                });
+            } else if(layEvent === 'LAYTABLE_TIPS'){
+                layer.alert('Hi，头部工具栏扩展的右侧图标。');
+            }
+        });
+
+        // 添加定时任务
+        $("#add").click(function () {
+            layer.open({
+                type: 2,
+                title:'添加定时任务',
+                skin: 'layui-layer-rim', //加上边框
+                area: ['850px', '700px'], //宽高
+                shade: 0.2,
+                content:'/index/crontabCreate'
+            });
+        })
+
+        // 查看节点
+        $("#node").click(function () {
+            // layer.open({
+            //     type: 2,
+            //     title:'节点列表',
+            //     skin: 'layui-layer-rim', //加上边框
+            //     area: ['850px', '500px'], //宽高
+            //     shade: 0.2,
+            //     content:'/index/getNodeList'
+            // });
+            window.location.href = '/index/getNodeList'
+        })
+        //监听提交
+        form.on('submit(formDemo)', function(data){
+            layer.msg(JSON.stringify(data.field));
+            return false;
+        });
+        // laypage.render({
+        //     elem: 'test1' //注意，这里的 test1 是 ID，不用加 # 号
+        //     ,count: 20 //数据总数，从服务端得到
+        //     ,jump: function(obj, first){
+        //         //obj包含了当前分页的所有参数，比如：
+        //         console.log(obj.curr); //得到当前页，以便向服务端请求对应页的数据。
+        //         console.log(obj.limit); //得到每页显示的条数
+        //
+        //         //首次不执行
+        //         if(!first){
+        //             //do something
+        //         }
+        //     }
+        // });
+    });
+</script>
+
+</html>
