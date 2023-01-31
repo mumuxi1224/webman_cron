@@ -1,0 +1,267 @@
+
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="utf-8">
+        <title>浏览页面</title>
+        <link rel="stylesheet" href="/app/admin/component/pear/css/pear.css" />
+        <link rel="stylesheet" href="/app/admin/admin/css/reset.css" />
+    </head>
+    <body class="pear-container">
+
+    <!-- 顶部查询表单 -->
+    <div class="layui-card">
+        <div class="layui-card-body">
+            <form class="layui-form top-search-from">
+
+                <div class="layui-form-item">
+                    <label class="layui-form-label">主键</label>
+                    <div class="layui-input-block">
+                        <input type="number" name="id" value="" class="layui-input">
+                    </div>
+                </div>
+
+                <div class="layui-form-item">
+                    <label class="layui-form-label">定时任务</label>
+                    <div class="layui-input-block">
+                        <div name="crontab_id" id="crontab_id" value="" ></div>
+                    </div>
+                </div>
+
+                <div class="layui-form-item">
+                    <label class="layui-form-label">执行状态</label>
+                    <div class="layui-input-block">
+                        <div name="return_code" id="return_code" value="" ></div>
+                    </div>
+                </div>
+
+                <div class="layui-form-item">
+                    <label class="layui-form-label">创建时间</label>
+                    <div class="layui-input-block">
+                        <div class="layui-input-block" id="create_time">
+                            <input type="text" autocomplete="off" name="create_time[]" id="create_time_start" class="layui-input inline-block" placeholder="开始时间">
+                            -
+                            <input type="text" autocomplete="off" name="create_time[]" id="create_time_end" class="layui-input inline-block" placeholder="结束时间">
+                        </div>
+                    </div>
+                </div>
+
+
+                <div class="layui-form-item layui-inline">
+                    <label class="layui-form-label"></label>
+                    <button class="pear-btn pear-btn-md pear-btn-primary" lay-submit lay-filter="table-query">
+                        <i class="layui-icon layui-icon-search"></i>查询
+                    </button>
+                    <button type="reset" class="pear-btn pear-btn-md" lay-submit lay-filter="table-reset">
+                        <i class="layui-icon layui-icon-refresh"></i>重置
+                    </button>
+                </div>
+                <div class="toggle-btn">
+                    <a class="layui-hide">展开<i class="layui-icon layui-icon-down"></i></a>
+                    <a class="layui-hide">收起<i class="layui-icon layui-icon-up"></i></a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+
+        <!-- 数据表格 -->
+        <div class="layui-card">
+            <div class="layui-card-body">
+                <table id="data-table" lay-filter="data-table"></table>
+            </div>
+        </div>
+
+        <!-- 表格顶部工具栏 -->
+<!--        <script type="text/html" id="table-toolbar">-->
+<!--            <button class="pear-btn pear-btn-primary pear-btn-md" lay-event="add" permission="systemcrontablog.insert">-->
+<!--                <i class="layui-icon layui-icon-add-1"></i>新增-->
+<!--            </button>-->
+<!--            <button class="pear-btn pear-btn-danger pear-btn-md" lay-event="batchRemove" permission="systemcrontablog.delete">-->
+<!--                <i class="layui-icon layui-icon-delete"></i>删除-->
+<!--            </button>-->
+<!--        </script>-->
+    <script type="text/html" id="code-bar">
+        {{#if (d.return_code == 0) { }}
+        <button class="pear-btn pear-btn-sm pear-btn-success" lay-event="edit"><i class="layui-icon layui-icon-ok"></i>
+            成功</button>
+        {{# }else if(d.return_code == 1){ }}
+        <button class="pear-btn pear-btn-sm pear-btn-danger" lay-event="error"><i class="layui-icon layui-icon-help"></i>
+            异常</button>
+        {{# } }}
+    </script>
+        <!-- 表格行工具栏 -->
+        <script type="text/html" id="table-bar">
+            <button class="pear-btn pear-btn-xs tool-btn" lay-event="edit" permission="systemcrontablog.update">编辑</button>
+            <button class="pear-btn pear-btn-xs tool-btn" lay-event="remove" permission="systemcrontablog.delete">删除</button>
+        </script>
+
+        <script src="/app/admin/component/layui/layui.js"></script>
+        <script src="/app/admin/component/pear/pear.js"></script>
+        <script src="/app/admin/admin/js/permission.js"></script>
+        <script src="/app/admin/admin/js/common.js"></script>
+
+        <script>
+
+            // 相关常量
+            const PRIMARY_KEY = "id";
+            const SELECT_API = "/system-crontab-log/select";
+            // const UPDATE_API = "/system-crontab-log/update";
+            // const DELETE_API = "/system-crontab-log/delete";
+            // const INSERT_URL = "/system-crontab-log/insert";
+            // const UPDATE_URL = "/system-crontab-log/update";
+            // 字段 登录时间 create_time
+            layui.use(["laydate"], function() {
+                layui.laydate.render({
+                    elem: "#create_time",
+                    range: ["#create_time_start", "#create_time_end"],
+                    // format: 'yyyy年MM月dd日'
+                    type: "datetime",
+                });
+            })
+
+            // 字段 定时任务 crontab_id
+            layui.use(["jquery", "xmSelect", "popup"], function() {
+                layui.$.ajax({
+                    url: "/system-crontab-log/getCrontabList",
+                    dataType: "json",
+                    success: function (res) {
+                        let value = layui.$("#sex").attr("value");
+                        let initValue = value ? value.split(",") : [];
+                        layui.xmSelect.render({
+                            el: "#crontab_id",
+                            name: "crontab_id",
+                            initValue: initValue,
+                            data: res.data,
+                            model: {"icon":"hidden","label":{"type":"text"}},
+                            clickClose: true,
+                            radio: true,
+                            filterable:true // 搜索模式
+                        });
+                        if (res.code) {
+                            layui.popup.failure(res.msg);
+                        }
+                    }
+                });
+                // 执行状态下拉
+                layui.xmSelect.render({
+                    el: "#return_code",
+                    name: "return_code",
+                    clickClose: true,
+                    radio: true,
+                    model: {"icon":"hidden","label":{"type":"text"}},
+                    data: [{value: 0, name: "成功"},{value: 1, name: "异常"}],
+                });
+            });
+
+            // 表格渲染
+            layui.use(["table", "form", "common", "popup", "util"], function() {
+                let table = layui.table;
+                let form = layui.form;
+                let $ = layui.$;
+                let common = layui.common;
+                let util = layui.util;
+
+				// 表头参数
+				let cols = [
+					{
+						title: "id",
+						field: "id",
+                        sort : true,
+                        wight: 50,
+					},{
+						title: "定时任务名称",
+						field: "crontab_info",
+					},{
+						title: "执行命令",
+						field: "target",
+					},{
+						title: "任务执行或者异常信息输出",
+						field: "exception",
+					},{
+						title: "执行状态",
+						field: "return_code",
+                        toolbar: '#code-bar'
+					},{
+						title: "执行所用时间（秒）",
+						field: "running_time",
+					},{
+						title: "创建时间",
+						field: "create_time",
+					}
+				];
+
+				// 渲染表格
+				table.render({
+				    elem: "#data-table",
+				    url: SELECT_API,
+				    page: true,
+				    cols: [cols],
+				    skin: "line",
+				    size: "lg",
+				    toolbar: "#table-toolbar",
+				    autoSort: false,
+                    where:{field:PRIMARY_KEY,order:'desc'},
+				    defaultToolbar: [{
+				        title: "刷新",
+				        layEvent: "refresh",
+				        icon: "layui-icon-refresh",
+				    }, "filter"],
+				    done: function () {
+				        layer.photos({photos: 'div[lay-id="data-table"]', anim: 5});
+				    }
+				});
+
+
+                // 表格顶部工具栏事件
+                table.on("toolbar(data-table)", function(obj) {
+                    if (obj.event === "add") {
+                        // add();
+                    } else if (obj.event === "refresh") {
+                        refreshTable();
+                    } else if (obj.event === "batchRemove") {
+                        // batchRemove(obj);
+                    }
+                });
+
+                // 表格顶部搜索事件
+                form.on("submit(table-query)", function(data) {
+                    data.field['order']='desc';
+                    data.field['field']=PRIMARY_KEY;
+                    table.reload("data-table", {
+                        where: data.field
+                    })
+                    return false;
+                });
+
+                // 表格顶部搜索重置事件
+                form.on("submit(table-reset)", function(data) {
+                    table.reload("data-table", {
+                        where:{field:PRIMARY_KEY,order:'desc'},
+                    })
+                });
+
+                // 表格排序事件
+                table.on("sort(data-table)", function(obj){
+                    table.reload("data-table", {
+                        initSort: obj,
+                        scrollPos: "fixed",
+                        where: {
+                            field: obj.field,
+                            order: obj.type
+                        }
+                    });
+                });
+
+
+                // 刷新表格数据
+                window.refreshTable = function(param) {
+                    table.reloadData("data-table", {
+                        scrollPos: "fixed"
+                    });
+                }
+            })
+
+        </script>
+    </body>
+</html>

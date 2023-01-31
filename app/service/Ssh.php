@@ -57,8 +57,46 @@ class Ssh {
             $output = $process->getOutput();
         }else{
             $output = $process->getErrorOutput();
+
         }
         return [$success,$output];
+    }
+
+    /**
+     * 检查要执行的命令是否安全
+     * @param string $command
+     * @return array
+     * @author guoliangchen
+     * @date 2023/1/29 0029 17:07
+     */
+    public static function checkCommandIsDanger(string $command):array {
+        if (!$command){
+            return [false,'命令不存在'];
+        }
+        $command_arr = explode(' ',$command);
+        $command_arr = array_filter($command_arr, function($v){
+            return $v ? true : false;
+        });
+        if ($command_arr[0]=='php'){
+            unset($command_arr[0]);
+        }
+        if (!isset($command_arr[1])){
+            return [false,'请输入要执行的定时任务文件！'];
+        }
+        $new_command = [];
+        foreach ($command_arr as $key=>$value){
+            if (empty($value)){
+                continue;
+            }
+            $value = trim($value);
+
+
+        }
+        if (empty($new_command)){
+            return [false,'命令不合法！'];
+        }
+
+        return [true,'ok'];
     }
 
 }

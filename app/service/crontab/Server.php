@@ -820,103 +820,13 @@ class Server
      */
     private function checkCrontabTables()
     {
-        $allTables = $this->getDbTables();
-        !in_array($this->crontabTable, $allTables) && $this->createCrontabTable();
-        !in_array($this->crontabLogTable, $allTables) && $this->createCrontabLogTable();
-        !in_array($this->crontabNodeTable, $allTables) && $this->createCrontabNodeTable();
+//        $allTables = $this->getDbTables();
+//        !in_array($this->crontabTable, $allTables) && $this->createCrontabTable();
+//        !in_array($this->crontabLogTable, $allTables) && $this->createCrontabLogTable();
+//        !in_array($this->crontabNodeTable, $allTables) && $this->createCrontabNodeTable();
     }
 
-    /**
-     * 获取数据库表名
-     * @return array
-     */
-    private function getDbTables(): array
-    {
-        return Db::getTables();
-    }
 
-    /**
-     * 创建定时器任务表
-     */
-    private function createCrontabTable()
-    {
-        $sql = <<<SQL
- CREATE TABLE IF NOT EXISTS `system_crontab`  (
-  `id` int(11) UNSIGNED NOT NULL AUTO_INCREMENT,
-  `title` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL COMMENT '任务标题',
-  `type` tinyint(1) NOT NULL DEFAULT 1 COMMENT '任务类型 (1 command, 2 class, 3 url, 4 eval)',
-  `rule` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL COMMENT '任务执行表达式',
-  `target` varchar(150) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT '' COMMENT '调用任务字符串',
-  `parameter` varchar(500)  COMMENT '任务调用参数', 
-  `running_times` int(11) NOT NULL DEFAULT '0' COMMENT '已运行次数',
-  `last_running_time` int(11) NOT NULL DEFAULT '0' COMMENT '上次运行时间',
-  `remark` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL COMMENT '备注',
-  `sort` int(11) NOT NULL DEFAULT 0 COMMENT '排序，越大越前',
-  `status` tinyint(4) NOT NULL DEFAULT 0 COMMENT '任务状态状态[0:禁用;1启用]',
-  `create_time` int(11) NOT NULL DEFAULT 0 COMMENT '创建时间',
-  `update_time` int(11) NOT NULL DEFAULT 0 COMMENT '更新时间',
-  `singleton` tinyint(1) NOT NULL DEFAULT 1 COMMENT '是否单次执行 (0 是 1 不是)',
-  `node_id` int(11) NOT NULL DEFAULT 0 COMMENT '节点表ID',
-  PRIMARY KEY (`id`) USING BTREE,
-  INDEX `title`(`title`) USING BTREE,
-  INDEX `create_time`(`create_time`) USING BTREE,
-  INDEX `status`(`status`) USING BTREE,
-  INDEX `node_id`(`node_id`) USING BTREE,
-  INDEX `type`(`type`) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 1 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci COMMENT = '定时器任务表' ROW_FORMAT = DYNAMIC
-SQL;
-
-        return Db::query($sql);
-    }
-
-    /**
-     * 定时器任务流水表
-     */
-    private function createCrontabLogTable()
-    {
-        $sql = <<<SQL
-CREATE TABLE IF NOT EXISTS `system_crontab_log`  (
-  `id` bigint UNSIGNED NOT NULL AUTO_INCREMENT,
-  `crontab_id` bigint UNSIGNED NOT NULL COMMENT '任务id',
-  `target` varchar(255) NOT NULL COMMENT '任务调用目标字符串',
-  `parameter` varchar(500)  COMMENT '任务调用参数', 
-  `exception` text  COMMENT '任务执行或者异常信息输出',
-  `return_code` tinyint(1) NOT NULL DEFAULT 0 COMMENT '执行返回状态[0成功; 1失败]',
-  `running_time` varchar(10) NOT NULL COMMENT '执行所用时间',
-  `create_time` int(11) NOT NULL DEFAULT 0 COMMENT '创建时间',
-  `update_time` int(11) NOT NULL DEFAULT 0 COMMENT '更新时间',
-  PRIMARY KEY (`id`) USING BTREE,
-  INDEX `create_time`(`create_time`) USING BTREE,
-  INDEX `crontab_id`(`crontab_id`) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 1 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci COMMENT = '定时器任务执行日志表' ROW_FORMAT = DYNAMIC
-SQL;
-
-        return Db::query($sql);
-    }
-
-    /**
-     * 任务节点记录表
-     * @return array
-     * @throws \think\db\exception\BindParamException
-     * @author guoliangchen
-     * @date 2022/12/21 0021 15:52
-     */
-    private function createCrontabNodeTable(){
-        $sql = <<<SQL
-CREATE TABLE `system_crontab_node` (
-  `id` int(10) UNSIGNED NOT NULL  AUTO_INCREMENT,
-  `host` varchar(64) NOT NULL COMMENT '节点ip',
-  `username` varchar(64) NOT NULL COMMENT '账号',
-  `alias` varchar(32) NOT NULL DEFAULT '' COMMENT '节点别名',
-  `port` int(11) NOT NULL DEFAULT '5921' COMMENT '节点端口',
-  `remark` varchar(100) NOT NULL DEFAULT '' COMMENT '备注',
-  `create_time` int(11) NOT NULL DEFAULT 0 COMMENT '创建时间',
-  `update_time` int(11) NOT NULL DEFAULT 0 COMMENT '更新时间',
-  PRIMARY KEY (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8;
-SQL;
-        return Db::query($sql);
-    }
 
 
 }
