@@ -25,8 +25,7 @@ use plugin\admin\app\model\Base;
  * @property integer $end_time 结束时间
  * @property string $warning_ids 要预警的人id集合，逗号隔开
  */
-class SystemCrontab extends Base
-{
+class SystemCrontab extends Base {
     /**
      * The table associated with the model.
      *
@@ -40,13 +39,35 @@ class SystemCrontab extends Base
      * @var string
      */
     protected $primaryKey = 'id';
-    
+
     /**
      * Indicates if the model should be timestamped.
      *
      * @var bool
      */
     public $timestamps = false;
-    
-    
+
+    /**
+     * 常用的cron表达式
+     * http://cron.ciding.cc/
+     * @return array|\string[][]
+     * @author guoliangchen
+     * @date 2023/1/31 0031 15:55
+     */
+    public function getCronTips(): array {
+        return [
+            ['value' => '0 0 10,14,16 * * *', 'name' => '每天上午10点，下午2点，4点'],
+            ['value' => '0 0 5-15 * * *', 'name' => '每天5-15点整点触发'],
+            ['value' => '0 2 1 * *', 'name' => '每个月1号的2点执行'],
+            ['value' => '*/5 * * * * *', 'name' => '每隔5秒执行一次'],
+            ['value' => '0 */1 * * * *', 'name' => '每隔1分钟执行一次'],
+        ];
+    }
+
+    public function getCronType() {
+        return [
+            ['value' => 1, 'name' => '节点执行(同步)'],
+            ['value' => 2, 'name' => '请求url(同步)'],
+        ];
+    }
 }

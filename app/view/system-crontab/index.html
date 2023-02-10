@@ -15,7 +15,7 @@
                 <form class="layui-form top-search-from">
                     
                     <div class="layui-form-item">
-                        <label class="layui-form-label">id</label>
+                        <label class="layui-form-label">ID</label>
                         <div class="layui-input-block">
                             <input type="number" name="id" value="" class="layui-input">
                         </div>
@@ -29,37 +29,41 @@
                     </div>
                     
                     <div class="layui-form-item">
-                        <label class="layui-form-label">任务类型 (1 command, 2 class, 3 url, 4 eval)</label>
+                        <label class="layui-form-label">任务类型</label>
                         <div class="layui-input-block">
-                            <input type="number" name="type" value="" class="layui-input">
+                            <div name="type" id="type" value="" ></div>
                         </div>
                     </div>
                     
                     <div class="layui-form-item">
-                        <label class="layui-form-label">任务状态状态[0:禁用;1启用]</label>
+                        <label class="layui-form-label">任务状态</label>
                         <div class="layui-input-block">
-                            <input type="number" name="status" value="" class="layui-input">
+                            <div name="status" id="status" value="" ></div>
                         </div>
                     </div>
-                    
+
                     <div class="layui-form-item">
                         <label class="layui-form-label">创建时间</label>
                         <div class="layui-input-block">
-                            <input type="number" name="create_time" value="" class="layui-input">
+                            <div class="layui-input-block" id="create_time">
+                                <input type="text" autocomplete="off" name="create_time[]" id="create_time_start" class="layui-input inline-block" placeholder="开始时间">
+                                -
+                                <input type="text" autocomplete="off" name="create_time[]" id="create_time_end" class="layui-input inline-block" placeholder="结束时间">
+                            </div>
                         </div>
                     </div>
                     
                     <div class="layui-form-item">
-                        <label class="layui-form-label">节点表ID</label>
+                        <label class="layui-form-label">节点选择</label>
                         <div class="layui-input-block">
-                            <input type="number" name="node_id" value="" class="layui-input">
+                            <div name="node_id" id="node_id" value="" ></div>
                         </div>
                     </div>
                     
                     <div class="layui-form-item">
                         <label class="layui-form-label">分类ID</label>
                         <div class="layui-input-block">
-                            <input type="number" name="category_id" value="" class="layui-input">
+                            <div name="category_id" id="category_id" value="" ></div>
                         </div>
                     </div>
                     
@@ -92,15 +96,30 @@
             <button class="pear-btn pear-btn-primary pear-btn-md" lay-event="add" permission="systemcrontab.insert">
                 <i class="layui-icon layui-icon-add-1"></i>新增
             </button>
-            <button class="pear-btn pear-btn-danger pear-btn-md" lay-event="batchRemove" permission="systemcrontab.delete">
-                <i class="layui-icon layui-icon-delete"></i>删除
+<!--            <button class="pear-btn pear-btn-danger pear-btn-md" lay-event="batchRemove" permission="systemcrontab.delete">-->
+<!--                <i class="layui-icon layui-icon-delete"></i>删除-->
+<!--            </button>-->
+            <button class="pear-btn pear-btn-warming pear-btn-md" lay-event="cron" permission="systemcrontab.cron">
+                <i class="layui-icon layui-icon-engine"></i>时间表达式在线校验
             </button>
+        </script>
+
+        <script type="text/html" id="status-bar">
+            {{#if (d.status == 1) { }}
+            <button class="pear-btn pear-btn-sm pear-btn-success">
+                启用</button>
+            {{# }else if(d.status == 0){ }}
+            <button class="pear-btn pear-btn-sm pear-btn-danger">
+                禁用</button>
+            {{# } }}
         </script>
 
         <!-- 表格行工具栏 -->
         <script type="text/html" id="table-bar">
             <button class="pear-btn pear-btn-xs tool-btn" lay-event="edit" permission="systemcrontab.update">编辑</button>
             <button class="pear-btn pear-btn-xs tool-btn" lay-event="remove" permission="systemcrontab.delete">删除</button>
+<!--            <button class="pear-btn pear-btn-xs tool-btn" lay-event="run_log" permission="systemcrontab.run_log">查看运行日志</button>-->
+<!--            <button class="pear-btn pear-btn-xs tool-btn" lay-event="warn_log" permission="systemcrontab.warn_log">查看预警日志</button>-->
         </script>
 
         <script src="/app/admin/component/layui/layui.js"></script>
@@ -117,7 +136,10 @@
             const DELETE_API = "/system-crontab/delete";
             const INSERT_URL = "/system-crontab/insert";
             const UPDATE_URL = "/system-crontab/update";
-            
+            const RUN_LOG_URL = "/system-crontab-log/select";
+            const WARN_LOG_URL = "/system-crontab-warn/update";
+
+
             // 表格渲染
             layui.use(["table", "form", "common", "popup", "util"], function() {
                 let table = layui.table;
@@ -125,29 +147,98 @@
                 let $ = layui.$;
                 let common = layui.common;
                 let util = layui.util;
-                
+
+                // 字段 定时任务 crontab_id
+                layui.use(["jquery", "xmSelect", "popup"], function() {
+                    // 执行状态下拉
+                    layui.xmSelect.render({
+                        el: "#is_effect",
+                        name: "is_effect",
+                        clickClose: true,
+                        radio: true,
+                        model: {"icon":"hidden","label":{"type":"text"}},
+                        data: [{value: 1, name: "启用"},{value: 0, name: "禁用"}],
+                    });
+                });
+
+                layui.use(["jquery", "xmSelect", "popup",'laydate'], function() {
+
+                    layui.laydate.render({
+                        elem: "#create_time",
+                        range: ["#create_time_start", "#create_time_end"],
+                        // format: 'yyyy年MM月dd日'
+                        type: "datetime",
+                    });
+                    // 页面下拉参数
+                    layui.$.ajax({
+                        url: "/system-crontab/getHtmlConfig",
+                        dataType: "json",
+                        success: function (result) {
+                            // 任务类型
+                             type_select= layui.xmSelect.render({
+                                el: "#type",
+                                name: "type",
+                                radio: true,
+                                clickClose: true,
+                                data: result.data.cron_type,
+                                filterable:true,
+                            });
+
+                            // 任务状态
+                            // 任务类型
+                             status_select = layui.xmSelect.render({
+                                el: "#status",
+                                name: "status",
+                                radio: true,
+                                clickClose: true,
+                                data: [{name:'启用',value:1},{name:'禁用',value:0}],
+                                filterable:true,
+                            });
+
+                            //  节点设置
+                             node_select = layui.xmSelect.render({
+                                el: "#node_id",
+                                name: "node_id",
+                                radio: true,
+                                clickClose: true,
+                                data: result.data.node_list,
+                                filterable:true,
+                            });
+                            // 任务分类
+                             category_select =  layui.xmSelect.render({
+                                el: "#category_id",
+                                name: "category_id",
+                                radio: true,
+                                clickClose: true,
+                                data: result.data.category_list,
+                                filterable:true,
+                            });
+
+                            if (result.code) {
+                                layui.popup.failure(result.msg);
+                            }
+                        }
+                    });
+                })
+
+
 				// 表头参数
 				let cols = [
 					{
-						type: "checkbox"
-					},{
-						title: "id",
+						title: "ID",
 						field: "id",
 					},{
 						title: "任务标题",
 						field: "title",
 					},{
-						title: "任务类型 (1 command, 2 class, 3 url, 4 eval)",
-						field: "type",
+						title: "任务类型",
+						field: "type_name",
 					},{
 						title: "任务执行表达式",
 						field: "rule",
 					},{
-						title: "调用任务字符串",
+						title: "执行命令",
 						field: "target",
-					},{
-						title: "任务调用参数",
-						field: "parameter",
 					},{
 						title: "已运行次数",
 						field: "running_times",
@@ -158,35 +249,38 @@
 						title: "备注",
 						field: "remark",
 					},{
-						title: "排序，越大越前",
-						field: "sort",
-					},{
-						title: "任务状态状态[0:禁用;1启用]",
+						title: "任务状态",
 						field: "status",
+                        toolbar: '#status-bar'
 					},{
 						title: "创建时间",
 						field: "create_time",
 					},{
-						title: "更新时间",
-						field: "update_time",
+						title: "节点信息",
+						field: "node_name",
 					},{
-						title: "是否单次执行 (0 是 1 不是)",
-						field: "singleton",
+						title: "任务分类",
+						field: "category_name",
 					},{
-						title: "节点表ID",
-						field: "node_id",
-					},{
-						title: "分类ID",
-						field: "category_id",
-					},{
-						title: "单次运行最大时间，超长会报警，单位：秒",
+						title: "单次运行最大时间（单位：秒）",
 						field: "single_run_max_time",
 					},{
 						title: "结束时间",
 						field: "end_time",
 					},{
-						title: "要预警的人id集合，逗号隔开",
+						title: "预警人信息",
 						field: "warning_ids",
+                        templet: function (d) {
+                            if (d.warn_info){
+                                let html = ''
+                                for (let i=0;i<d.warn_info.length;i++){
+                                    html+=d.warn_info[i]+`<br>`;
+                                }
+                                return html;
+                            }
+                            return '';
+
+                        }
 					},{
 						title: "操作",
 						toolbar: "#table-bar",
@@ -206,11 +300,12 @@
 				    size: "lg",
 				    toolbar: "#table-toolbar",
 				    autoSort: false,
+                    where:{field:PRIMARY_KEY,order:'desc'},
 				    defaultToolbar: [{
 				        title: "刷新",
 				        layEvent: "refresh",
 				        icon: "layui-icon-refresh",
-				    }, "filter", "print", "exports"],
+				    }, "filter"],
 				    done: function () {
 				        layer.photos({photos: 'div[lay-id="data-table"]', anim: 5});
 				    }
@@ -224,6 +319,11 @@
                     } else if (obj.event === "edit") {
                         edit(obj);
                     }
+                    // else if (obj.event === "run_log") {
+                    //     run_log(obj);
+                    // } else if (obj.event === "warn_log") {
+                    //     warn_log(obj);
+                    // }
                 });
 
                 // 表格顶部工具栏事件
@@ -234,11 +334,15 @@
                         refreshTable();
                     } else if (obj.event === "batchRemove") {
                         batchRemove(obj);
+                    } else if (obj.event === "cron") {
+                        window.open('http://cron.ciding.cc/','_blank');
                     }
                 });
 
                 // 表格顶部搜索事件
                 form.on("submit(table-query)", function(data) {
+                    data.field['order']='desc';
+                    data.field['field']=PRIMARY_KEY;
                     table.reload("data-table", {
                         where: data.field
                     })
@@ -247,8 +351,9 @@
                 
                 // 表格顶部搜索重置事件
                 form.on("submit(table-reset)", function(data) {
+                    layui.$('.xm-icon-close').click()
                     table.reload("data-table", {
-                        where: []
+                        where:{field:PRIMARY_KEY,order:'desc'},
                     })
                 });
 
@@ -270,7 +375,7 @@
                         type: 2,
                         title: "新增",
                         shade: 0.1,
-                        area: [common.isModile()?"100%":"500px", common.isModile()?"100%":"450px"],
+                        area: [common.isModile()?"100%":"700px", common.isModile()?"100%":"800px"],
                         content: INSERT_URL
                     });
                 }
@@ -282,10 +387,34 @@
                         type: 2,
                         title: "修改",
                         shade: 0.1,
-                        area: [common.isModile()?"100%":"500px", common.isModile()?"100%":"450px"],
+                        area: [common.isModile()?"100%":"700px", common.isModile()?"100%":"800px"],
                         content: UPDATE_URL + "?" + PRIMARY_KEY + "=" + value
                     });
                 }
+
+                // // 查看运行日志
+                // let run_log = function(obj) {
+                //     let value = obj.data[PRIMARY_KEY];
+                //     layer.open({
+                //         type: 2,
+                //         title: "运行日志",
+                //         shade: 0.1,
+                //         area: [common.isModile()?"100%":"700px", common.isModile()?"100%":"800px"],
+                //         content: RUN_LOG_URL + "?" + PRIMARY_KEY + "=" + value
+                //     });
+                // }
+
+                // // 查看预警日志
+                // let warn_log = function(obj) {
+                //     let value = obj.data[PRIMARY_KEY];
+                //     layer.open({
+                //         type: 2,
+                //         title: "预警日志",
+                //         shade: 0.1,
+                //         area: [common.isModile()?"100%":"700px", common.isModile()?"100%":"800px"],
+                //         content: WARN_LOG_URL + "?" + PRIMARY_KEY + "=" + value
+                //     });
+                // }
 
                 // 删除一行
                 let remove = function(obj) {

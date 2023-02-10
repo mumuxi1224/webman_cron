@@ -39,6 +39,14 @@ class SystemCrontabNodeController extends MyCrudController {
         return view('system-crontab-node/index');
     }
 
+    /**
+     * 列表
+     * @param Request $request
+     * @return Response
+     * @throws BusinessException
+     * @author guoliangchen
+     * @date 2023/2/1 0001 16:59
+     */
     public function select(Request $request): Response {
         [$where, $format, $limit, $field, $order] = $this->selectInput($request);
         $query     = $this->doSelect($where, $field, $order);
@@ -46,14 +54,9 @@ class SystemCrontabNodeController extends MyCrudController {
         $items     = $paginator->items();
         if ($items) {
             $items        = arrayObjToArray($items);
-//            $create_user_id   = array_column($items, 'create_user_id');
-//            $field        = ['id', 'nickname'];
-//            $crontab_info = Db::table('wa_admins')->whereIn('id', $create_user_id)->select($field)->get()->toArray();
-//            $crontab_info = array_column($crontab_info, null, 'id');
             foreach ($items as &$item) {
                 $item['create_time']     = date('Y-m-d H:i:s', $item['create_time']);
                 $item['update_time']     = date('Y-m-d H:i:s', $item['update_time']);
-//                $item['create_user_info']    = isset($crontab_info[$item['create_user_id']]) ? $crontab_info[$item['create_user_id']]->nickname : '';
             }
         }
 

@@ -62,6 +62,18 @@ class MyCrudController extends Crud {
      * @date 2023/1/28 0028 10:09
      */
     public function __formatSearch(array $where = []):array {
+        if (!$where) {
+            return [];
+        }
+        if (isset($where['create_time'])) {
+            if (count($where['create_time']) == 2) {
+                $where['create_time'][0] = strtotime($where['create_time'][0]);
+                $where['create_time'][1] = strtotime($where['create_time'][1]);
+            }
+            else {
+                unset($where['create_time']);
+            }
+        }
         return $where;
     }
 }

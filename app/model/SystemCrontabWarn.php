@@ -64,7 +64,7 @@ class SystemCrontabWarn extends Base
             if ($data){
                 $rds_save_data = [];
                 foreach ($data as $value){
-                    $rds_save_data[ $value->warn_id ] = ['nick_name'=>$value->nick_name,'mobile'=>$value->mobile];
+                    $rds_save_data[] = ['warn_id'=>$value->warn_id,'nick_name'=>$value->nick_name,'mobile'=>$value->mobile];
                 }
                 Redis::setEx(self::$_redis_save_key,self::$_redis_save_time,json_encode($rds_save_data));
                 return $rds_save_data;

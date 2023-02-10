@@ -36,7 +36,7 @@
                 </div>
 
                 <div class="layui-form-item">
-                    <label class="layui-form-label">创建时间</label>
+                    <label class="layui-form-label">开始时间</label>
                     <div class="layui-input-block">
                         <div class="layui-input-block" id="create_time">
                             <input type="text" autocomplete="off" name="create_time[]" id="create_time_start" class="layui-input inline-block" placeholder="开始时间">
@@ -83,10 +83,10 @@
 <!--        </script>-->
     <script type="text/html" id="code-bar">
         {{#if (d.return_code == 0) { }}
-        <button class="pear-btn pear-btn-sm pear-btn-success" lay-event="edit"><i class="layui-icon layui-icon-ok"></i>
+        <button class="pear-btn pear-btn-sm pear-btn-success"><i class="layui-icon layui-icon-ok"></i>
             成功</button>
         {{# }else if(d.return_code == 1){ }}
-        <button class="pear-btn pear-btn-sm pear-btn-danger" lay-event="error"><i class="layui-icon layui-icon-help"></i>
+        <button class="pear-btn pear-btn-sm pear-btn-danger"><i class="layui-icon layui-icon-help"></i>
             异常</button>
         {{# } }}
     </script>
@@ -186,9 +186,13 @@
 						title: "执行所用时间（秒）",
 						field: "running_time",
 					},{
-						title: "创建时间",
+						title: "开始时间",
 						field: "create_time",
-					}
+					},
+                    ,{
+                        title: "结束时间",
+                        field: "update_time",
+                    }
 				];
 
 				// 渲染表格

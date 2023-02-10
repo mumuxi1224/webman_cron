@@ -35,6 +35,14 @@ class SystemCrontabLogController extends MyCrudController {
         return view('system-crontab-log/index');
     }
 
+    /**
+     * 列表
+     * @param Request $request
+     * @return Response
+     * @throws \support\exception\BusinessException
+     * @author guoliangchen
+     * @date 2023/2/1 0001 16:59
+     */
     public function select(Request $request): Response {
         [$where, $format, $limit, $field, $order] = $this->selectInput($request);
         $where     = $this->__formatSearch($where);
@@ -49,6 +57,7 @@ class SystemCrontabLogController extends MyCrudController {
             $crontab_info = array_column($crontab_info, null, 'id');
             foreach ($items as &$item) {
                 $item['create_time']     = date('Y-m-d H:i:s', $item['create_time']);
+                $item['update_time']     = date('Y-m-d H:i:s', $item['update_time']);
                 $item['return_code_msg'] = $item['return_code'] == 0 ? '成功' : '失败';
                 $item['crontab_info']    = isset($crontab_info[$item['crontab_id']]) ? $crontab_info[$item['crontab_id']]->title : '';
             }

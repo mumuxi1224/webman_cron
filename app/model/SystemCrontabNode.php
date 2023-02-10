@@ -38,6 +38,37 @@ class SystemCrontabNode extends Base
      * @var bool
      */
     public $timestamps = false;
-    
-    
+
+    /**
+     * 获取节点列表
+     * @param $items
+     * @return array
+     * @author guoliangchen
+     * @date 2023/2/1 0001 10:49
+     */
+    public function getNodeList($items=['*']) {
+        $data = $this->orderBy($this->primaryKey, 'desc')->get($items);
+        if ($data) {
+            $data = $data->toArray();
+            return $data;
+        }
+        return [];
+    }
+
+    /**
+     * 根据ID获取
+     * @param array $ids
+     * @param string[] $items
+     * @return array
+     * @author guoliangchen
+     * @date 2023/2/1 0001 15:51
+     */
+    public function getNodeListByIds($ids = [],$items=['*']) {
+        $data = $this->whereIn($this->primaryKey, $ids)->get($items);
+        if ($data) {
+            $data = $data->toArray();
+            return $data;
+        }
+        return [];
+    }
 }

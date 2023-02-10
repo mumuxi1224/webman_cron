@@ -37,6 +37,14 @@ class SystemLogController extends MyCrudController
         return view('system-log/index');
     }
 
+    /**
+     * 列表
+     * @param Request $request
+     * @return Response
+     * @throws BusinessException
+     * @author guoliangchen
+     * @date 2023/2/1 0001 17:00
+     */
     public function select(Request $request): Response {
         [$where, $format, $limit, $field, $order] = $this->selectInput($request);
         $where     = $this->__formatSearch($where);

@@ -101,6 +101,8 @@ class SystemCrontabWarnController extends MyCrudController
                 return $this->json(1, '手机号已存在');
             }
             $this->doUpdate($id, $data);
+            // 清除缓存
+            SystemCrontabWarn::removeWarnCache();
             return $this->json(0);
         }
         return view('system-crontab-warn/update');
@@ -109,11 +111,20 @@ class SystemCrontabWarnController extends MyCrudController
     public function effect(Request $request): Response
     {
         if ($request->method() === 'POST') {
+            // 清除缓存
+            SystemCrontabWarn::removeWarnCache();
             return parent::update($request);
         }
     }
 
-
+    /**
+     * 列表
+     * @param Request $request
+     * @return Response
+     * @throws BusinessException
+     * @author guoliangchen
+     * @date 2023/2/1 0001 16:59
+     */
     public function select(Request $request): Response{
         [$where, $format, $limit, $field, $order] = $this->selectInput($request);
         $query = $this->doSelect($where, $field, $order);
@@ -126,5 +137,14 @@ class SystemCrontabWarnController extends MyCrudController
             }
         }
         return json(['code' => 0, 'msg' => 'ok', 'count' => $paginator->total(), 'data' => $items]);
+    }
+
+    public function delete(Request $request): Response
+    {
+        $ids = $this->deleteInput($request);
+        $this->doDelete($ids);
+        // 清除缓存
+        SystemCrontabWarn::removeWarnCache();
+        return $this->json(0);
     }
 }

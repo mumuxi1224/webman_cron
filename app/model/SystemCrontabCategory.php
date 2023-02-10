@@ -33,6 +33,37 @@ class SystemCrontabCategory extends Base
      * @var bool
      */
     public $timestamps = false;
-    
-    
+
+    /**
+     * 获取所有分类
+     * @param $items
+     * @return array
+     * @author guoliangchen
+     * @date 2023/2/1 0001 10:48
+     */
+    public function getAllCategory($items){
+        $data = $this->orderBy($this->primaryKey, 'desc')->get($items);
+        if ($data){
+            $data = $data->toArray();
+            return $data;
+        }
+        return [];
+    }
+
+    /**
+     * 根据ID获取分类
+     * @param array $ids
+     * @param string[] $item
+     * @return array
+     * @author guoliangchen
+     * @date 2023/2/1 0001 15:46
+     */
+    public function getCategoryByIds($ids = [],$item = ['*']){
+        $data = $this->whereIn($this->primaryKey,$ids)->get($item);
+        if ($data){
+            $data = $data->toArray();
+            return $data;
+        }
+        return [];
+    }
 }

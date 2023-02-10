@@ -21,121 +21,103 @@
                     </div>
                     
                     <div class="layui-form-item">
-                        <label class="layui-form-label">任务类型 (1 command, 2 class, 3 url, 4 eval)</label>
+                        <label class="layui-form-label required">任务类型</label>
                         <div class="layui-input-block">
-                            <input type="number" name="type" value="1" class="layui-input">
+                            <div name="type" id="type" value="" ></div>
+                        </div>
+                    </div>
+
+                    <div class="layui-form-item">
+                        <label class="layui-form-label">常用时间表达式</label>
+                        <div class="layui-input-block">
+                            <div name="cron_tips" id="cron_tips" value="" ></div>
+                        </div>
+                    </div>
+
+                    <div class="layui-form-item">
+                        <label class="layui-form-label required">执行时间</label>
+                        <div class="layui-input-block">
+                            <input type="text" name="rule" id="rule" value="" required lay-verify="required" class="layui-input">
+                            <span style="color: red">时间表达式，可在列表页面查看时间表达式在线校验</span>
                         </div>
                     </div>
                     
                     <div class="layui-form-item">
-                        <label class="layui-form-label required">任务执行表达式</label>
+                        <label class="layui-form-label">执行命令</label>
                         <div class="layui-input-block">
-                            <input type="text" name="rule" value="" required lay-verify="required" class="layui-input">
+                            <input type="text" name="target" placeholder="只需填写要调用的文件|url名称即可" value="" class="layui-input">
+                            <span style="color: red">远程节点执行时只需填写文件名称和参数，url调用时只需填写url地址即可</span>
+                        </div>
+                    </div>
+                    
+<!--                    <div class="layui-form-item">-->
+<!--                        <label class="layui-form-label">任务调用参数</label>-->
+<!--                        <div class="layui-input-block">-->
+<!--                            <input type="text" name="parameter" value="" class="layui-input">-->
+<!--                        </div>-->
+<!--                    </div>-->
+
+                    <div class="layui-form-item">
+                        <label class="layui-form-label">备注</label>
+                        <div class="layui-input-block">
+                            <textarea name="remark" placeholder="请输入内容" class="layui-textarea">
+需求名称：
+产品信息：
+开发人员：
+目的：
+</textarea>
+                        </div>
+                    </div>
+                    
+<!--                    <div class="layui-form-item">-->
+<!--                        <label class="layui-form-label">排序，越大越前</label>-->
+<!--                        <div class="layui-input-block">-->
+<!--                            <input type="number" name="sort" value="0" class="layui-input">-->
+<!--                        </div>-->
+<!--                    </div>-->
+                    
+                    <div class="layui-form-item">
+                        <label class="layui-form-label">任务状态</label>
+                        <div class="layui-input-block">
+                            <input type="checkbox" id="status" lay-filter="status" lay-skin="switch" />
+                            <input type="text" style="display:none" name="status" value="1" />
+                        </div>
+                    </div>
+
+                    <div class="layui-form-item" id="node_set">
+                        <label class="layui-form-label">节点设置</label>
+                        <div class="layui-input-block">
+                            <div name="node_id" id="node_id" value="" ></div>
                         </div>
                     </div>
                     
                     <div class="layui-form-item">
-                        <label class="layui-form-label">调用任务字符串</label>
+                        <label class="layui-form-label">任务分类</label>
                         <div class="layui-input-block">
-                            <input type="text" name="target" value="" class="layui-input">
+                            <div name="category_id" id="category_id" value="" ></div>
                         </div>
                     </div>
-                    
-                    <div class="layui-form-item">
-                        <label class="layui-form-label">任务调用参数</label>
-                        <div class="layui-input-block">
-                            <input type="text" name="parameter" value="" class="layui-input">
-                        </div>
-                    </div>
-                    
-                    <div class="layui-form-item">
-                        <label class="layui-form-label">已运行次数</label>
-                        <div class="layui-input-block">
-                            <input type="number" name="running_times" value="0" class="layui-input">
-                        </div>
-                    </div>
-                    
-                    <div class="layui-form-item">
-                        <label class="layui-form-label">上次运行时间</label>
-                        <div class="layui-input-block">
-                            <input type="number" name="last_running_time" value="0" class="layui-input">
-                        </div>
-                    </div>
-                    
-                    <div class="layui-form-item">
-                        <label class="layui-form-label required">备注</label>
-                        <div class="layui-input-block">
-                            <input type="text" name="remark" value="" required lay-verify="required" class="layui-input">
-                        </div>
-                    </div>
-                    
-                    <div class="layui-form-item">
-                        <label class="layui-form-label">排序，越大越前</label>
-                        <div class="layui-input-block">
-                            <input type="number" name="sort" value="0" class="layui-input">
-                        </div>
-                    </div>
-                    
-                    <div class="layui-form-item">
-                        <label class="layui-form-label">任务状态状态[0:禁用;1启用]</label>
-                        <div class="layui-input-block">
-                            <input type="number" name="status" value="0" class="layui-input">
-                        </div>
-                    </div>
-                    
-                    <div class="layui-form-item">
-                        <label class="layui-form-label">创建时间</label>
-                        <div class="layui-input-block">
-                            <input type="number" name="create_time" value="0" class="layui-input">
-                        </div>
-                    </div>
-                    
-                    <div class="layui-form-item">
-                        <label class="layui-form-label">更新时间</label>
-                        <div class="layui-input-block">
-                            <input type="number" name="update_time" value="0" class="layui-input">
-                        </div>
-                    </div>
-                    
-                    <div class="layui-form-item">
-                        <label class="layui-form-label">是否单次执行 (0 是 1 不是)</label>
-                        <div class="layui-input-block">
-                            <input type="number" name="singleton" value="1" class="layui-input">
-                        </div>
-                    </div>
-                    
-                    <div class="layui-form-item">
-                        <label class="layui-form-label">节点表ID</label>
-                        <div class="layui-input-block">
-                            <input type="number" name="node_id" value="0" class="layui-input">
-                        </div>
-                    </div>
-                    
-                    <div class="layui-form-item">
-                        <label class="layui-form-label">分类ID</label>
-                        <div class="layui-input-block">
-                            <input type="number" name="category_id" value="0" class="layui-input">
-                        </div>
-                    </div>
-                    
-                    <div class="layui-form-item">
-                        <label class="layui-form-label">单次运行最大时间，超长会报警，单位：秒</label>
-                        <div class="layui-input-block">
-                            <input type="number" name="single_run_max_time" value="0" class="layui-input">
-                        </div>
-                    </div>
-                    
+
                     <div class="layui-form-item">
                         <label class="layui-form-label">结束时间</label>
                         <div class="layui-input-block">
-                            <input type="number" name="end_time" value="0" class="layui-input">
+                            <input type="text" autocomplete="off" name="end_time" id="end_time" class="layui-input inline-block" placeholder="结束时间">
+                            <span style="color: red">结束时间,若填写时，超过此时间定时任务会自动结束</span>
+                        </div>
+                    </div>
+
+                    <div class="layui-form-item">
+                        <label class="layui-form-label">单次运行最大时间</label>
+                        <div class="layui-input-block">
+                            <input type="number" value="0" name="single_run_max_time"  class="layui-input">
+                            <span style="color: red">单次运行最大时间，超长会报警，单位：秒，默认为0不报警</span>
                         </div>
                     </div>
                     
                     <div class="layui-form-item">
-                        <label class="layui-form-label">要预警的人id集合，逗号隔开</label>
+                        <label class="layui-form-label">预警人员</label>
                         <div class="layui-input-block">
-                            <input type="text" name="warning_ids" value="" class="layui-input">
+                            <div  name="warning_ids" id="warning_ids" ></div>
                         </div>
                     </div>
                     
@@ -161,10 +143,97 @@
         <script src="/app/admin/admin/js/permission.js"></script>
         
         <script>
-
             // 相关接口
             const INSERT_API = "/system-crontab/insert";
-            
+
+            // 字段 禁用 status
+            layui.use(["form",'xmSelect'], function() {
+                layui.$("#status").attr("checked", layui.$('input[name="status"]').val() != 0);
+                layui.form.render();
+                layui.form.on("switch(status)", function(data) {
+                    layui.$('input[name="status"]').val(this.checked ? 1 : 0);
+                });
+                // 结束时间
+                layui.laydate.render({
+                    elem: "#end_time",
+                    // range: ["#create_time_start", "#create_time_end"],
+                    // format: 'yyyy年MM月dd日'
+                    type: "datetime",
+                });
+
+                // 预警下拉多选
+                // 页面下拉参数
+                layui.$.ajax({
+                    url: "/system-crontab/getHtmlConfig",
+                    dataType: "json",
+                    success: function (res) {
+                        // 任务类型
+                        layui.xmSelect.render({
+                            el: "#type",
+                            name: "type",
+                            initValue: [],
+                            radio: true,
+                            clickClose: true,
+                            data: res.data.cron_type,
+                            on:function (data) {
+                                if (data.arr[0]){
+                                    if (data.arr[0].value == 2){
+                                        layui.$('#node_set').hide();
+                                    }else{
+                                        layui.$('#node_set').show();
+                                    }
+                                }
+                            }
+                        });
+
+                        // 常用时间表达式
+                        layui.xmSelect.render({
+                            el: "#cron_tips",
+                            name: "cron_tips",
+                            radio: true,
+                            clickClose: true,
+                            initValue: [],
+                            data: res.data.cron_tips,
+                            on:function (data) {
+                                if (data.arr[0]){
+                                    layui.$('#rule').val( data.arr[0].value )
+                                }
+                            }
+                        });
+
+                        //  节点设置
+                        layui.xmSelect.render({
+                            el: "#node_id",
+                            name: "node_id",
+                            radio: true,
+                            clickClose: true,
+                            initValue: [],
+                            data: res.data.node_list,
+                        });
+                        // 任务分类
+                        layui.xmSelect.render({
+                            el: "#category_id",
+                            name: "category_id",
+                            radio: true,
+                            clickClose: true,
+                            initValue: [],
+                            data: res.data.category_list,
+                        });
+
+                        layui.xmSelect.render({
+                            el: "#warning_ids",
+                            name: "warning_ids",
+                            data: res.data.warn_list,
+                        });
+
+                        if (res.code) {
+                            layui.popup.failure(res.msg);
+                        }
+                    }
+                });
+
+            })
+
             //提交事件
             layui.use(["form", "popup"], function () {
                 layui.form.on("submit(save)", function (data) {

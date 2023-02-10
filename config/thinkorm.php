@@ -25,7 +25,7 @@ return [
                 \PDO::ATTR_EMULATE_PREPARES         => true,
             ],
             // 数据库编码默认采用utf8
-            'charset'         => 'utf8',
+            'charset'         => 'utf8mb4',
             // 数据库表前缀
             'prefix'          => '',
             // 断线重连

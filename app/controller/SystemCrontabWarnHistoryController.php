@@ -65,6 +65,14 @@ class SystemCrontabWarnHistoryController extends MyCrudController
         return view('system-crontab-warn-history/update');
     }
 
+    /**
+     * 列表
+     * @param Request $request
+     * @return Response
+     * @throws BusinessException
+     * @author guoliangchen
+     * @date 2023/2/1 0001 16:59
+     */
     public function select(Request $request): Response {
         [$where, $format, $limit, $field, $order] = $this->selectInput($request);
         $query     = $this->doSelect($where, $field, $order);
