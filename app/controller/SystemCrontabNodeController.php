@@ -134,30 +134,30 @@ class SystemCrontabNodeController extends MyCrudController {
     public function ssh(Request $request): Response {
         if ($request->method() === 'POST') {
             $id = $request->input('id', 0);
-            if (!$id || $id<=0){
+            if (!$id || $id <= 0) {
                 return $this->json(1, '参数缺失');
             }
-            if (!Redis::setNx($this->_redis_ssh_test_key.$id,$this->_redis_ssh_test_key_time)){
+            if (!Redis::setNx($this->_redis_ssh_test_key . $id, $this->_redis_ssh_test_key_time)) {
                 return $this->json(1, '请勿频繁点击');
             }
-            Redis::expire($this->_redis_ssh_test_key.$id,$this->_redis_ssh_test_key_time);
-            $field = ['host','username','port'];
-            $data = $this->model->find($id,$field)->toArray();
-            if (empty($data)){
+            Redis::expire($this->_redis_ssh_test_key . $id, $this->_redis_ssh_test_key_time);
+            $field = ['host', 'username', 'port'];
+            $data  = $this->model->find($id, $field)->toArray();
+            if (empty($data)) {
                 return $this->json(1, '记录不存在！');
             }
             $ssh_data = [
-                'node_id'=>$id,
-                'port'=>$data['port'],
-                'username'=>$data['username'],
-                'host'=>$data['host'],
-                'target'=>'date',
+                'node_id'  => $id,
+                'port'     => $data['port'],
+                'username' => $data['username'],
+                'host'     => $data['host'],
+                'target'   => 'date',
             ];
-            list($status,$msg) = Ssh::createSshAndExecCommand($ssh_data);
-            if ($status){
-                return $this->json(0,'ok');
+            list($status, $msg) = Ssh::createSshAndExecCommand($ssh_data);
+            if ($status) {
+                return $this->json(0, 'ok');
             }
-            return $this->json(1,$msg);
+            return $this->json(1, $msg);
         }
     }
 

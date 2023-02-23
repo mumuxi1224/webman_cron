@@ -5,6 +5,8 @@
  * ssh链接的方法
  */
 namespace app\service;
+use DivineOmega\SSHConnection\SSHConnection;
+
 class Ssh {
 
     /**
@@ -45,21 +47,24 @@ class Ssh {
      */
     public static function createSshAndExecCommand(array $data){
         $rsa_file = self::getRsaFilePath($data['node_id']);
-        $process = \Spatie\Ssh\Ssh::create($data['username'], $data['host'])
-            ->usePort($data['port'])
-            ->usePrivateKey($rsa_file)
-            ->disableStrictHostKeyChecking()
-            ->execute($data['target']);
-        $output = '';
-        $success = $process->isSuccessful();
-
-        if ($success){
-            $output = $process->getOutput();
-        }else{
-            $output = $process->getErrorOutput();
-
-        }
-        return [$success,$output];
+//        $process = \Spatie\Ssh\Ssh::create($data['username'], $data['host'])
+//            ->usePort($data['port'])
+//            ->usePrivateKey($rsa_file)
+//            ->disableStrictHostKeyChecking()
+//            ->execute($data['target']);
+        $connection = (new SSHConnection())
+            ->to($data['host'])
+            ->onPort($data['port'])
+            ->as($data['username'])
+//            ->withPassword('password')
+             ->withPrivateKey($rsa_file)
+            // ->timeout(0)
+            ->connect();
+        $command = $connection->run($data['target']);
+        $output = $command->getOutput();
+        $error = $command->getError();
+//        $connection->disconnect();
+        return [!$error,$output];
     }
 
     /**

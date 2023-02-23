@@ -281,6 +281,9 @@ class SystemCrontabController extends MyCrudController {
                 return [false, '结束时间要大于当前时间！'];
             }
         }
+        if ($data['single_run_max_time']>0 && $data['single_run_max_time']<60){
+            return [false, '目前单次运行最大时间至少要超过60秒才会触发预警！'];
+        }
         // 验证命令
         $data['target'] = trim($data['target']);
         $target         = explode(' ', $data['target']);
