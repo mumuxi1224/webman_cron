@@ -184,17 +184,20 @@ class SystemCrontabController extends MyCrudController {
         // 分类列表
         $systemCrontabCategory = new SystemCrontabCategory();
         $category_list         = $systemCrontabCategory->getAllCategory(['category_id', 'name']);
+        $params['category_list'] = [];
         foreach ($category_list as $cate) {
             $params['category_list'][] = ['name' => $cate['name'], 'value' => $cate['category_id']];
         }
         // 节点列表
         $SystemCrontabCategory = new SystemCrontabNode();
         $node_list             = $SystemCrontabCategory->getNodeList(['id', 'host', 'alias']);
+        $params['node_list'] = [];
         foreach ($node_list as $node) {
             $params['node_list'][] = ['name' => $node['alias'] . '(' . $node['host'] . ')', 'value' => $node['id']];
         }
         // 预警人员
         $warn_list = SystemCrontabWarn::getWarnCache();
+        $params['warn_list'] = [];
         foreach ($warn_list as $warn) {
             $params['warn_list'][] = [
                 'value' => $warn['warn_id'],
@@ -310,7 +313,7 @@ class SystemCrontabController extends MyCrudController {
             }
             // 验证命令是否安全
             // todo 2023年2月1日13:37:55 可能还是不够安全 日后也可能需要完善 glc
-            $pattern = '/^[0-9a-zA-Z]$/';
+            $pattern = '/^[0-9a-zA-Z_]+$/';
             foreach ($target as $key => $t) {
                 if ($key == $first_target_key) {
                     continue;
@@ -341,10 +344,10 @@ class SystemCrontabController extends MyCrudController {
             // 去掉可能存储的节点信息
             $data['node_id'] = 0;
         }
-        if (!$data['end_time']) $data['end_time'] = 0;
-        if (!$data['warning_ids']) $data['warning_ids'] = '';
-        if (!$data['single_run_max_time']) $data['single_run_max_time'] = 0;
-        if (!$data['category_id']) $data['category_id'] = 0;
+        if (!isset($data['end_time']) || empty($data['end_time'])) $data['end_time'] = 0;
+        if (!isset($data['warning_ids']) || empty($data['warning_ids'])) $data['warning_ids'] = '';
+        if (!isset($data['single_run_max_time']) || empty($data['single_run_max_time'])) $data['single_run_max_time'] = 0;
+        if (!isset($data['category_id']) || empty($data['category_id'])) $data['category_id'] = 0;
         if ($data['end_time']) $data['end_time'] = strtotime($data['end_time']);
         $data['rule'] = trim($data['rule']);
         return [true, $data];
