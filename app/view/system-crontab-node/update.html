@@ -37,7 +37,19 @@
                     <div class="layui-form-item">
                         <label class="layui-form-label required">节点端口</label>
                         <div class="layui-input-block">
-                            <input type="number" required lay-verify="required" name="port" value="5921" class="layui-input">
+                            <input type="number" required lay-verify="required" name="port" value="22" class="layui-input">
+                        </div>
+                    </div>
+                    <div class="layui-form-item">
+                        <label class="layui-form-label">代码路径</label>
+                        <div class="layui-input-block">
+                            <input type="text" name="code_dir" value="" class="layui-input">
+                        </div>
+                    </div>
+                    <div class="layui-form-item">
+                        <label class="layui-form-label required">入口文件</label>
+                        <div class="layui-input-block">
+                            <input type="text" name="index_name" value="index.php" class="layui-input">
                         </div>
                     </div>
                     <div class="layui-form-item">

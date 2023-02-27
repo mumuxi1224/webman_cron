@@ -141,17 +141,19 @@ class SystemCrontabNodeController extends MyCrudController {
                 return $this->json(1, '请勿频繁点击');
             }
             Redis::expire($this->_redis_ssh_test_key . $id, $this->_redis_ssh_test_key_time);
-            $field = ['host', 'username', 'port'];
+            $field = ['host', 'username', 'port','code_dir','index_name'];
             $data  = $this->model->find($id, $field)->toArray();
             if (empty($data)) {
                 return $this->json(1, '记录不存在！');
             }
             $ssh_data = [
-                'node_id'  => $id,
-                'port'     => $data['port'],
-                'username' => $data['username'],
-                'host'     => $data['host'],
-                'target'   => 'date',
+                'node_id'    => $id,
+                'port'       => $data['port'],
+                'username'   => $data['username'],
+                'host'       => $data['host'],
+                'code_dir'   => $data['code_dir'],
+                'index_name' => $data['index_name'],
+                'target'     => 'php '.$data['index_name'].' test',
             ];
             list($status, $msg) = Ssh::createSshAndExecCommand($ssh_data);
             if ($status) {
@@ -179,6 +181,7 @@ class SystemCrontabNodeController extends MyCrudController {
             'port'     => 'require|gt:0|lt:65536',
             'remark'   => 'max:100',
             'username' => 'require|max:64',
+            'index_name' => 'require|max:50',
         ];
         $message = [
             'host.require' => '主机ip必填',
@@ -194,6 +197,9 @@ class SystemCrontabNodeController extends MyCrudController {
             'remark.max'       => '备注不能超过100字',
             'username.require' => '账号必填',
             'username.max'     => '账号不能超过64字',
+
+            'index_name.require' => '入口文件名称必填',
+            'index_name.max'     => '入口文件名称不能超过50字',
         ];
         if ($insert) {
             $rule['rsa']            = 'require';
@@ -202,6 +208,24 @@ class SystemCrontabNodeController extends MyCrudController {
         }else {
             $rule['id']            = 'require';
             $message['id.require'] = '节点不存在！';
+        }
+        if (!empty($data['code_dir'])){
+            if (mb_strlen($data['code_dir'])>50){
+                return [false, '代码路径长度不能超过50字符'];
+            }
+            $data['code_dir'] = str_replace('\\',DIRECTORY_SEPARATOR,$data['code_dir']);
+            if ($data['code_dir'][0] !==DIRECTORY_SEPARATOR){
+                return [false, '请输入绝对路径'];
+            }
+        }
+        $index_name_ext = getFileExt($data['index_name']);
+        if ($index_name_ext!=='php'){
+            return [false, '入口文件必须是php文件！'];
+        }
+        $data['index_name'] = str_replace('\\',DIRECTORY_SEPARATOR,$data['index_name']);
+        $single_path = explode(DIRECTORY_SEPARATOR,$data['index_name']);
+        if (count($single_path) >1){
+            return [false, '请输入不带路径的php入口文件！'];
         }
         $validate = new Validate();
         $validate->rule($rule)->message($message);

@@ -62,7 +62,7 @@ class RedisServerMutex implements ServerMutex
 
     protected function getMutexName($crontab): string
     {
-        return 'webman' . DIRECTORY_SEPARATOR . 'crontab-' . sha1($crontab['title'] . $crontab['rule']) . '-sv';
+        return 'webman' . DIRECTORY_SEPARATOR . 'crontab-' . sha1($crontab['id'].$crontab['title'] . $crontab['rule']) . '-sv';
     }
 
 

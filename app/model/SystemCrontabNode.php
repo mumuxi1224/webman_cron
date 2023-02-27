@@ -14,6 +14,8 @@ use plugin\admin\app\model\Base;
  * @property integer $create_time 创建时间
  * @property integer $update_time 更新时间
  * @property integer $create_user_id 创建人
+ * @property string $code_dir 代码运行的目录
+ * @property string $index_name 入口文件名称
  * @property integer $rsa 创建人
  */
 class SystemCrontabNode extends Base

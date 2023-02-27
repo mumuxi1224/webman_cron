@@ -201,7 +201,7 @@ class Server {
     private function execJob($id) {
         $data = Db::table($this->crontabTable)
             ->alias('c')
-            ->field('c.*,n.host,n.alias,n.port,n.id as node_id,n.username')
+            ->field('c.*,n.host,n.alias,n.port,n.id as node_id,n.username,n.code_dir,n.index_name')
             ->where('c.id', $id)
             ->join($this->crontabNodeTable . ' n', 'c.node_id= n.id', 'LEFT')
             ->where('status', self::NORMAL_STATUS)
@@ -217,10 +217,13 @@ class Server {
         if (!empty($data)) {
             $data['end_time'] = intval($data['end_time']);
             if ($data['warning_ids']) $data['warning_ids'] = explode(',', $data['warning_ids']);
+            $data['index_name'] = empty($data['index_name'])?'index.php':$data['index_name'];
             if (!$this->decorateRunnable($data)) {
                 return;
             }
-            if ($data['type'] == self::NODE_CRONTAB) $data['target'] = 'php ' . $data['target'] . ' ' . $this->ssh_flag;
+            if ($data['type'] == self::NODE_CRONTAB){
+                $data['target'] = 'php '.$data['index_name'] .' '. $data['target'] . ' ' . $this->ssh_flag;
+            }
             $this->crontabPool[$data['id']]            = [
                 'id'                  => $data['id'],
                 'target'              => $data['target'],
@@ -284,6 +287,9 @@ class Server {
                 {
                     try {
                         list($result, $output) = Ssh::createSshAndExecCommand($data);
+                        if (!$result){
+                            $code = 1;
+                        }
                     } catch (\Throwable $throwable) {
                         $result = false;
                         $code   = 1;
@@ -360,6 +366,7 @@ class Server {
         if (isset($this->crontabPool[$data['id']])) {
             $this->crontabPool[$data['id']]['is_running'] = false;
         }
+        $msg = '';
         // 发送短信
         if ($code == 1) {
             $msg = "定时任务：{$data['title']}-ID{$data['id']}-运行出错，请去查看";
@@ -372,7 +379,6 @@ class Server {
                 call_user_func([$this, 'createSmsMsg'], $data['warning_ids'], $data['id'], $msg);
             }
         }
-
     }
 
     /**
@@ -569,6 +575,8 @@ class Server {
 
         if (isset($this->crontabPool[$param['id']])) {
             $this->crontabPool[$param['id']]['crontab']->destroy();
+            $taskMutex = $this->getTaskMutex();
+            $taskMutex->remove($param);
             unset($this->crontabPool[$param['id']]);
         }
         if ($param['status'] == self::NORMAL_STATUS) {
@@ -588,11 +596,12 @@ class Server {
     private function crontabDelete(array $param): string {
         if ($id = $param['id']) {
             $ids = explode(',', (string)$id);
-
+            $taskMutex = $this->getTaskMutex();
             foreach ($ids as $item) {
                 if (isset($this->crontabPool[$item])) {
                     $this->crontabPool[$item]['crontab']->destroy();
                     unset($this->crontabPool[$item]);
+                    $taskMutex->remove($param);
                 }
             }
 
@@ -613,11 +622,12 @@ class Server {
      */
     private function crontabReload(array $param): string {
         $ids = explode(',', (string)$param['id']);
-
+        $taskMutex = $this->getTaskMutex();
         foreach ($ids as $id) {
             if (isset($this->crontabPool[$id])) {
                 $this->crontabPool[$id]['crontab']->destroy();
                 unset($this->crontabPool[$id]);
+                $taskMutex->remove($param);
             }
             Db::table($this->crontabTable)
                 ->where('id', $id)
