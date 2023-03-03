@@ -236,7 +236,8 @@ class Server {
                 'single_run_max_time' => $data['single_run_max_time'] ?? 0,
                 'warning_ids'         => $data['warning_ids'],
                 'is_running'          => false,
-                'last_run_time'       => $now
+                'last_run_time'       => $now,
+                'has_send_sms'       => $now
             ];
             $this->crontabPool[$data['id']]['crontab'] = new Crontab($data['rule'], function () use ($data, $_that) {
                 \Swoole\Runtime::enableCoroutine();
@@ -263,8 +264,16 @@ class Server {
         if (empty($this->crontabPool[$data['id']]) || $this->crontabPool[$data['id']]['is_running']) {
             return false;
         }
+        // 如果到达了结束时间
+        if ($this->crontabPool[$data['id']]['end_time'] > 0 && time() >= $this->crontabPool[$data['id']]['end_time']) {
+            $this->crontabPool[$data['id']]['crontab']->destroy();
+            unset($this->crontabPool[$data['id']]);
+            Db::table($this->crontabTable)->where('id', $data['id'])->update(['status'=>0]);
+            return false;
+        }
         $this->crontabPool[$data['id']]['is_running']    = true;
         $this->crontabPool[$data['id']]['last_run_time'] = time();
+        $this->crontabPool[$data['id']]['has_send_sms']  = false;
         return true;
     }
 
@@ -366,16 +375,17 @@ class Server {
         if (isset($this->crontabPool[$data['id']])) {
             $this->crontabPool[$data['id']]['is_running'] = false;
         }
-        $msg = '';
         // 发送短信
         if ($code == 1) {
             $msg = "定时任务：{$data['title']}-ID{$data['id']}-运行出错，请去查看";
+            $this->crontabPool[$data['id']]['has_send_sms']  = true;
             call_user_func([$this, 'createSmsMsg'], $data['warning_ids'], $data['id'], $msg);
         }
         elseif (isset($data['single_run_max_time']) && $data['single_run_max_time'] > 0 && $data['warning_ids']) {
             if ($running_time > $data['single_run_max_time']) {
                 $msg = "定时任务：{$data['title']}-ID{$data['id']}-已运行{$running_time}秒，超过超过最大时间{$data['single_run_max_time']}秒，请去查看";
                 // 发送预计信息
+                $this->crontabPool[$data['id']]['has_send_sms']  = true;
                 call_user_func([$this, 'createSmsMsg'], $data['warning_ids'], $data['id'], $msg);
             }
         }
@@ -409,7 +419,7 @@ class Server {
         $now = time();
         if ($this->crontabPool) {
             foreach ($this->crontabPool as $crontab_id => $data) {
-                if (isset($data['single_run_max_time']) && $data['single_run_max_time'] > 0 && $data['warning_ids']) {
+                if (isset($data['single_run_max_time']) && $data['single_run_max_time'] > 0 && $data['warning_ids'] && $data['has_send_sms']===false) {
                     $run_time = $now - $data['last_run_time'];
                     if ($data['is_running'] && $run_time > $data['single_run_max_time']) {
                         $msg = "定时任务：{$data['title']}-ID{$data['id']}-已运行{$run_time}秒，超过超过最大时间{$data['single_run_max_time']}，请去查看";

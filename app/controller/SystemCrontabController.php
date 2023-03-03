@@ -306,10 +306,10 @@ class SystemCrontabController extends MyCrudController {
             }
             else {
                 // 是否是php文件
-                $ext = getFileExt($target[$first_target_key]);
-                if ($ext != 'php') {
-                    return [false, '目前仅开放执行php文件'];
-                }
+//                $ext = getFileExt($target[$first_target_key]);
+//                if ($ext != 'php') {
+//                    return [false, '目前仅开放执行php文件'];
+//                }
             }
             // 验证命令是否安全
             // todo 2023年2月1日13:37:55 可能还是不够安全 日后也可能需要完善 glc
