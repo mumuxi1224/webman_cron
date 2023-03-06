@@ -42,7 +42,7 @@ class MyCrudController extends Crud {
                 'api'            => $request->uri(),
                 'ip'             => $request->getRealIp(),
                 'agent'          => $request->header('User-Agent'),
-                'req_body'       => json_encode($request->all()),
+                'req_body'       => json_encode($request->all(),JSON_UNESCAPED_UNICODE),
                 'resp_body'      => $response->rawBody(),
                 'code'           => $response->getStatusCode(),
                 'create_user_id' => admin_id(),
@@ -73,6 +73,9 @@ class MyCrudController extends Crud {
             else {
                 unset($where['create_time']);
             }
+        }
+        if (!empty($where['title'])){
+            $where['title'] = ['like','%'.$where['title'].'%'];
         }
         return $where;
     }

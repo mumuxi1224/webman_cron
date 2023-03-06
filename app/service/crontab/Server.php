@@ -222,7 +222,8 @@ class Server {
                 return;
             }
             if ($data['type'] == self::NODE_CRONTAB){
-                $data['target'] = 'php '.$data['index_name'] .' '. $data['target'] . ' ' . $this->ssh_flag;
+//                $data['target'] = 'php '.$data['index_name'] .' '. $data['target'] . ' ' . $this->ssh_flag;
+                $data['target'] = 'php '.$data['index_name'] .' '. $data['target'];
             }
             $this->crontabPool[$data['id']]            = [
                 'id'                  => $data['id'],
@@ -298,6 +299,9 @@ class Server {
                         list($result, $output) = Ssh::createSshAndExecCommand($data);
                         if (!$result){
                             $code = 1;
+                        }elseif (empty($output)){
+                            $code = 1;
+                            $output = '未接受到返回值，任务可能报错';
                         }
                     } catch (\Throwable $throwable) {
                         $result = false;
