@@ -153,7 +153,7 @@ class SystemCrontabNodeController extends MyCrudController {
                 'host'       => $data['host'],
                 'code_dir'   => $data['code_dir'],
                 'index_name' => $data['index_name'],
-                'target'     => 'php '.$data['index_name'].' test',
+                'target'     => 'php '.$data['index_name'].' crontabtest',
             ];
             list($status, $msg) = Ssh::createSshAndExecCommand($ssh_data);
             if ($status) {

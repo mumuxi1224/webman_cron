@@ -77,6 +77,10 @@ class SystemCrontabController extends MyCrudController {
         return view('system-crontab/insert');
     }
 
+    public function filterData(Request $request){
+        return $this->insertInput($request);
+    }
+
     /**
      * 更新
      * @param Request $request
@@ -210,13 +214,13 @@ class SystemCrontabController extends MyCrudController {
     }
 
     /**
-     * 参数校验
+     * 参数校验时间表达式在线校验
      * @param array $data
      * @return array
      * @author guoliangchen
      * @date 2023/2/1 0001 15:11
      */
-    private function __validateParam(array $data): array {
+    public function __validateParam(array $data): array {
         if (empty($data)) {
             return [false, '参数缺失'];
         }
@@ -284,6 +288,7 @@ class SystemCrontabController extends MyCrudController {
                 return [false, '结束时间要大于当前时间！'];
             }
         }
+        if (!isset($data['single_run_max_time']) || empty($data['single_run_max_time'])) $data['single_run_max_time'] = 0;
         if ($data['single_run_max_time']>0 && $data['single_run_max_time']<60){
             return [false, '目前单次运行最大时间至少要超过60秒才会触发预警！'];
         }
@@ -352,4 +357,59 @@ class SystemCrontabController extends MyCrudController {
         $data['rule'] = trim($data['rule']);
         return [true, $data];
     }
+
+    /**
+     * 校验要导入excel文件
+     * @param Request $request
+     * @return Response
+     * @author guoliangchen
+     * @date 2023/3/6 0006 14:55
+     */
+    public function export(Request $request){
+//        if (strtolower($request->method())=='post'){
+//            if (!$file = $request->file()){
+//                return $this->json(0, '请选择要上传的文件');
+//            }
+//            $file  = array_shift($file);
+//            var_dump($file);
+//            if (!$file->isValid()){
+//                return $this->json(0, '文件无效');
+//            }
+//            $allow_ext = ['xls','xlsx'];
+//            $file_ext = $file->getUploadExtension();
+//            var_dump($file_ext);
+//            if (!in_array($file_ext,$allow_ext)){
+//                return $this->json(0, '请上传'.implode('、',$allow_ext).'格式的文件');
+//            }
+//            $file_temp_path = $file->getRealPath();
+//            var_dump($file_temp_path);
+//            var_export($spl_file->isValid()); // 文件是否有效，例如ture|false
+//            var_export($spl_file->getUploadExtension()); // 上传文件后缀名，例如'jpg'
+//            var_export($spl_file->getUploadMineType()); // 上传文件mine类型，例如 'image/jpeg'
+//            var_export($spl_file->getUploadErrorCode()); // 获取上传错误码，例如 UPLOAD_ERR_NO_TMP_DIR UPLOAD_ERR_NO_FILE UPLOAD_ERR_CANT_WRITE
+//            var_export($spl_file->getUploadName()); // 上传文件名，例如 'my-test.jpg'
+//            var_export($spl_file->getSize()); // 获得文件大小，例如 13364，单位字节
+//            var_export($spl_file->getPath()); // 获得上传的目录，例如 '/tmp'
+//            var_export($spl_file->getRealPath()); // 获得临时文件路径，例如 `/tmp/workerman.upload.SRliMu`
+
+//            return '';
+//        }
+//        return view('system-crontab/export');
+    }
+
+    /**
+     * 获取示例excel
+     * @param Request $request
+     * @return Response|\Webman\Http\Response
+     * @author guoliangchen
+     * @date 2023/3/6 0006 17:29
+     */
+    public function getExcel(Request $request){
+        $file_path = public_path().DIRECTORY_SEPARATOR.'example.xlsx';
+        if (file_exists($file_path)){
+            return \response()->download($file_path,'上传示例excel.xlsx');
+        }
+        return view('404', ['error' => '示例excel不存在'])->withStatus(404);
+    }
+
 }

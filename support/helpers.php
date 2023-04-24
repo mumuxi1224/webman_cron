@@ -515,3 +515,22 @@ function cpu_count(): int
     }
     return $count > 0 ? $count : 4;
 }
+
+/**
+ * 对外接口json返回
+ * @param $code
+ * @param string $msg
+ * @param array $data
+ * @param bool $data_object
+ * @return Response
+ * @author guoliangchen
+ * @date 2023/4/19 0019 15:02
+ */
+function jsonMsg($code, $msg = '', $data = [], $data_object = false) {
+    $json_data = [
+        'code' => (int)$code,
+        'msg'  => $msg,
+        'data' => $data ?: ($data_object ? (object)[] : [])
+    ];
+    return json($json_data);
+}

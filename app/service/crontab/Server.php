@@ -146,7 +146,7 @@ class Server {
         $this->delTaskMutex();
         $this->checkCrontabTables();
         $this->crontabInit();
-//        $this->watchCrontabWarning();
+        $this->watchCrontabWarning();
         $this->sendSmsMsg();
 
         DefaultHandler::setDefaultHandler(SwooleHandler::class);
@@ -302,6 +302,21 @@ class Server {
                         }elseif (empty($output)){
                             $code = 1;
                             $output = '未接受到返回值，任务可能报错';
+                        }else{
+                            $json_output = json_decode($output,true);
+                            if (json_last_error()){
+                                $code = 1;
+                                $output.= '--返回值不是json，可能报错';
+                            }
+                            if (isset($json_output['code'])){
+                                if ($json_output['code']!=0){
+                                    $code = 1;
+                                    $output.= '--返回值报错';
+                                }
+                            }else{
+                                $code = 1;
+                                $output.= '--返回值无法识别';
+                            }
                         }
                     } catch (\Throwable $throwable) {
                         $result = false;
@@ -426,6 +441,8 @@ class Server {
                 if (isset($data['single_run_max_time']) && $data['single_run_max_time'] > 0 && $data['warning_ids'] && $data['has_send_sms']===false) {
                     $run_time = $now - $data['last_run_time'];
                     if ($data['is_running'] && $run_time > $data['single_run_max_time']) {
+                        // 发送预计信息
+                        $this->crontabPool[$crontab_id]['has_send_sms']  = true;
                         $msg = "定时任务：{$data['title']}-ID{$data['id']}-已运行{$run_time}秒，超过超过最大时间{$data['single_run_max_time']}，请去查看";
                         // 发送预计信息
                         $this->createSmsMsg($data['warning_ids'], $data['id'], $msg);
@@ -523,7 +540,7 @@ class Server {
             ->insertGetId($param);
         $id && $this->execJob($id);
 
-        return json_encode(['code' => 200, 'msg' => 'ok', 'data' => ['code' => (bool)$id]]);
+        return json_encode(['code' => 200, 'msg' => 'ok', 'data' => ['code' => (bool)$id,'pk'=>$id]]);
     }
 
     /**
@@ -597,7 +614,7 @@ class Server {
             $this->execJob($param['id']);
         }
 
-        return json_encode(['code' => 200, 'msg' => 'ok', 'data' => ['code' => (bool)$row]]);
+        return json_encode(['code' => 200, 'msg' => 'ok', 'data' => ['code' => (bool)$row,'pk'=>$param['id']]]);
 
     }
 
