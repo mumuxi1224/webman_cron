@@ -38,6 +38,15 @@ class SystemLog extends Base
      * @var bool
      */
     public $timestamps = false;
-    
-    
+
+    private $_inner_operate_man = [
+        ['id'=>-1,'name'=>'数据统计分析']
+    ];
+
+    public function getInnerOM($key_sort=false){
+        if ($key_sort){
+            return array_column($this->_inner_operate_man,null,'id');
+        }
+        return $this->_inner_operate_man;
+    }
 }

@@ -37,6 +37,4 @@ class SystemCrontabLog extends Base
      * @var bool
      */
     public $timestamps = false;
-
-
 }

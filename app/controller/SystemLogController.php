@@ -57,10 +57,14 @@ class SystemLogController extends MyCrudController
             $field        = ['id', 'nickname'];
             $crontab_info = Db::table('wa_admins')->whereIn('id', $create_user_id)->select($field)->get()->toArray();
             $crontab_info = array_column($crontab_info, null, 'id');
+            $inner_om =  $this->model->getInnerOM(true);
             foreach ($items as &$item) {
                 $item['create_time']     = date('Y-m-d H:i:s', $item['create_time']);
 //                $item['return_code_msg'] = $item['return_code'] == 0 ? '成功' : '失败';
                 $item['create_user_info']    = isset($crontab_info[$item['create_user_id']]) ? $crontab_info[$item['create_user_id']]->nickname : '';
+                if (! $item['create_user_info']){
+                    $item['create_user_info']    = isset($inner_om[$item['create_user_id']]) ? $inner_om[$item['create_user_id']]['name'] : '';
+                }
             }
         }
 
@@ -82,6 +86,13 @@ class SystemLogController extends MyCrudController
             $list[] = [
                 'name'  => $item->nickname,
                 'value' => $item->id
+            ];
+        }
+        $inner_om =  $this->model->getInnerOM();
+        foreach ($inner_om as $item) {
+            $list[] = [
+                'name'  => $item['name'],
+                'value' => $item['id']
             ];
         }
         return $this->json(0, 'ok', $list);
