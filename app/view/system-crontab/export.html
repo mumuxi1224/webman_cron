@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>新增页面</title>
+    <link rel="stylesheet" href="/app/admin/component/pear/css/pear.css" />
+    <link rel="stylesheet" href="/app/admin/admin/css/reset.css" />
+</head>
+<body>
+
+<form class="layui-form" action="">
+
+    <div class="mainBox">
+        <div class="main-container mr-5">
+            <div class="layui-form-item">
+                <label class="layui-form-label required">获取excel</label>
+                <div class="layui-input-block">
+                    <button type="button" class="pear-btn pear-btn-danger pear-btn-sm" id="get_excel">
+                        <i class="layui-icon layui-icon-upload"></i>获取excel格式
+                    </button>
+                </div>
+            </div>
+            <div class="layui-form-item">
+                <label class="layui-form-label required">excel</label>
+                <div class="layui-input-block">
+                    <span></span>
+                    <input type="text" style="display:none" name="url" value="" />
+                    <button type="button" class="pear-btn pear-btn-primary pear-btn-sm" id="url">
+                        <i class="layui-icon layui-icon-upload"></i>上传excel
+                    </button>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+</form>
+
+<script src="/app/admin/component/layui/layui.js"></script>
+<script src="/app/admin/component/pear/pear.js"></script>
+<script src="/app/admin/admin/js/permission.js"></script>
+<script>
+
+    // 字段 文件 url
+    layui.use(["upload", "layer", "popup", "util"], function() {
+        let input = layui.$("#url").prev();
+        input.prev().html(layui.util.escape(input.val()));
+        layui.upload.render({
+            elem: "#url",
+            accept: "file",
+            acceptMime: "file/xls,file/xlsx",
+            url: "/system-crontab/check",
+            field: "__file__",
+            done: function (res) {
+                if (res.code) return layui.popup.failure(res.msg);
+                parent.refreshTable();
+                parent.layer.close(parent.layer.getFrameIndex(window.name));
+            }
+        });
+        layui.$('#get_excel').click(function () {
+            window.open('/system-crontab/getExcel');
+        })
+    });
+</script>
+
+</body>
+</html>
