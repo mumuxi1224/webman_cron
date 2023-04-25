@@ -131,9 +131,9 @@
                         layui.xmSelect.render({
                             el: "#crontab_id",
                             name: "crontab_id",
-                            initValue: initValue,
+                            // initValue: initValue,
                             data: res.data,
-                            model: {"icon":"hidden","label":{"type":"text"}},
+                            // model: {"icon":"hidden","label":{"type":"text"}},
                             clickClose: true,
                             radio: true,
                             filterable:true // 搜索模式
@@ -149,7 +149,7 @@
                     name: "return_code",
                     clickClose: true,
                     radio: true,
-                    model: {"icon":"hidden","label":{"type":"text"}},
+                    // model: {"icon":"hidden","label":{"type":"text"}},
                     data: [{value: 0, name: "成功"},{value: 1, name: "异常"}],
                 });
             });

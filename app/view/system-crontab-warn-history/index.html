@@ -101,18 +101,14 @@
                     url: "/system-crontab-log/getCrontabList",
                     dataType: "json",
                     success: function (res) {
-                        let value = layui.$("#sex").attr("value");
-                        let initValue = value ? value.split(",") : [];
                         layui.xmSelect.render({
                             el: "#crontab_id",
                             name: "crontab_id",
-                            initValue: initValue,
-                            data: res.data,
-                            model: {"icon":"hidden","label":{"type":"text"}},
-                            clickClose: true,
                             radio: true,
-                            filterable:true // 搜索模式
+                            clickClose: true,
+                            data: res.data,
                         });
+
                         if (res.code) {
                             layui.popup.failure(res.msg);
                         }

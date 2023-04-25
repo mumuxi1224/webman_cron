@@ -358,6 +358,42 @@ class SystemCrontabController extends MyCrudController {
         return [true, $data];
     }
 
+
+    /**
+     * 删除
+     * @param Request $request
+     * @return Response
+     * @throws BusinessException
+     */
+    public function delete(Request $request): Response
+    {
+        $ids = $this->deleteInput($request);
+
+        $status = $request->post('status');
+        if (!in_array($status,[0,1])){
+            return $this->json(1, '未知状态');
+        }
+        $status = $status==1?0:1;
+        $data = [
+            'id'=>$ids[0],
+            'status'=>$status
+        ];
+        $param  = [
+            'method' => 'crontabUpdate',
+            'args'   => $data
+        ];
+        $result = \app\service\crontab\Client::instance()->request($param);
+        if ($result['code']) {
+            return $this->json(0, 'ok');
+        }
+        return $this->json(1, $result['msg']);
+        $result = \app\service\crontab\Client::instance()->request($param);
+        if ($result['code']) {
+            return $this->json(0, 'ok');
+        }
+        return $this->json(1, $result['msg']);
+    }
+
     /**
      * 校验要导入excel文件
      * @param Request $request

@@ -102,6 +102,9 @@
             <button class="pear-btn pear-btn-warming pear-btn-md" lay-event="cron" permission="systemcrontab.cron">
                 <i class="layui-icon layui-icon-engine"></i>时间表达式在线校验
             </button>
+            <button class="pear-btn pear-btn-danger pear-btn-md" lay-event="export_cron" permission="systemcrontab.export">
+                <i class="layui-icon layui-icon-engine"></i>定时任务导入
+            </button>
         </script>
 
         <script type="text/html" id="status-bar">
@@ -117,7 +120,7 @@
         <!-- 表格行工具栏 -->
         <script type="text/html" id="table-bar">
             <button class="pear-btn pear-btn-xs tool-btn" lay-event="edit" permission="systemcrontab.update">编辑</button>
-            <button class="pear-btn pear-btn-xs tool-btn" lay-event="remove" permission="systemcrontab.delete">删除</button>
+            <button class="pear-btn pear-btn-xs tool-btn _set_status" lay-event="remove" permission="systemcrontab.delete">状态</button>
 <!--            <button class="pear-btn pear-btn-xs tool-btn" lay-event="run_log" permission="systemcrontab.run_log">查看运行日志</button>-->
 <!--            <button class="pear-btn pear-btn-xs tool-btn" lay-event="warn_log" permission="systemcrontab.warn_log">查看预警日志</button>-->
         </script>
@@ -135,6 +138,7 @@
             const UPDATE_API = "/system-crontab/update";
             const DELETE_API = "/system-crontab/delete";
             const INSERT_URL = "/system-crontab/insert";
+            const EXPORT_CRON_URL = "/system-crontab/export";
             const UPDATE_URL = "/system-crontab/update";
             const RUN_LOG_URL = "/system-crontab-log/select";
             const WARN_LOG_URL = "/system-crontab-warn/update";
@@ -336,6 +340,8 @@
                         batchRemove(obj);
                     } else if (obj.event === "cron") {
                         window.open('http://cron.ciding.cc/','_blank');
+                    } else if (obj.event === "export_cron") {
+                        export_cron(obj)
                     }
                 });
 
@@ -418,7 +424,8 @@
 
                 // 删除一行
                 let remove = function(obj) {
-                    return doRemove(obj.data[PRIMARY_KEY]);
+                    console.log(obj)
+                    return doRemove(obj.data[PRIMARY_KEY],obj.data['status']);
                 }
 
                 // 删除多行
@@ -430,12 +437,23 @@
                     }
                     doRemove(checkIds.split(","));
                 }
-
+                //定时任务导入
+                let export_cron = function() {
+                    layer.open({
+                        type: 2,
+                        title: "定时任务导入",
+                        shade: 0.1,
+                        area: [common.isModile()?"100%":"700px", common.isModile()?"100%":"800px"],
+                        content: EXPORT_CRON_URL
+                    });
+                }
                 // 执行删除
-                let doRemove = function (ids) {
+                let doRemove = function (ids,status) {
                     let data = {};
+                    tips = status==1?"禁用?":'启用?'
                     data[PRIMARY_KEY] = ids;
-                    layer.confirm("确定删除?", {
+                    data['status'] = status;
+                    layer.confirm("确定"+tips, {
                         icon: 3,
                         title: "提示"
                     }, function(index) {

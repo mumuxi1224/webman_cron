@@ -607,7 +607,7 @@ class Server {
         if (isset($this->crontabPool[$param['id']])) {
             $this->crontabPool[$param['id']]['crontab']->destroy();
             $taskMutex = $this->getTaskMutex();
-            $taskMutex->remove($param);
+            $taskMutex->remove($this->crontabPool[$param['id']]);
             unset($this->crontabPool[$param['id']]);
         }
         if ($param['status'] == self::NORMAL_STATUS) {
