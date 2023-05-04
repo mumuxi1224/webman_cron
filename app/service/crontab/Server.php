@@ -297,8 +297,9 @@ class Server {
                 {
                     try {
                         list($result, $output) = Ssh::createSshAndExecCommand($data);
-                        if (!$result){
+                        if ($result){
                             $code = 1;
+                            $output .= '--执行返回false';
                         }elseif (empty($output)){
                             $code = 1;
                             $output = '未接受到返回值，任务可能报错';
@@ -319,9 +320,14 @@ class Server {
                             }
                         }
                     } catch (\Throwable $throwable) {
-                        $result = false;
                         $code   = 1;
                         $output = $throwable->getMessage();
+                    }
+                    if($code==1){
+                        if (!is_string($result)){
+                            $result = json_encode($result);
+                        }
+                        $output.='--result:'.$result;
                     }
                 }
                 break;
@@ -603,7 +609,6 @@ class Server {
         $row = Db::table($this->crontabTable)
             ->where('id', $param['id'])
             ->update($param);
-
         if (isset($this->crontabPool[$param['id']])) {
             $this->crontabPool[$param['id']]['crontab']->destroy();
             $taskMutex = $this->getTaskMutex();

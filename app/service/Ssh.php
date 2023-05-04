@@ -75,13 +75,13 @@ class Ssh {
         $error   = $command->getError();
         $exc = $output . $error;
         if (strpos($exc, 'No such file or directory')!==false) {
-            return [false, '请检查代码运行路径' . $data['code_dir'] . '是否存在！'];
+            return [true, '请检查代码运行路径' . $data['code_dir'] . '是否存在！'];
         }
         if (strpos($exc, 'Could not open input file')!==false) {
-            return [false, '入口文件'.$data['index_name'].'不存在！'];
+            return [true, '入口文件'.$data['index_name'].'不存在！'];
         }
 //        $connection->disconnect();
-        return [!$error, $output];
+        return [$error, $output];
     }
 
     /**

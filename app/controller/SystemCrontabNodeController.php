@@ -155,8 +155,8 @@ class SystemCrontabNodeController extends MyCrudController {
                 'index_name' => $data['index_name'],
                 'target'     => 'php '.$data['index_name'].' crontabtest',
             ];
-            list($status, $msg) = Ssh::createSshAndExecCommand($ssh_data);
-            if ($status) {
+            list($error, $msg) = Ssh::createSshAndExecCommand($ssh_data);
+            if (!$error) {
                 return $this->json(0, 'ok');
             }
             return $this->json(1, $msg);
