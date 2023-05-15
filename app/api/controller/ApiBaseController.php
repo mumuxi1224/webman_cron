@@ -37,7 +37,7 @@ class ApiBaseController {
             $log = [
                 'api'            => $request->uri(),
                 'ip'             => $request->getRealIp(),
-                'agent'          => $request->header('User-Agent'),
+                'agent'          => $request->header('User-Agent')?:'',
                 'req_body'       => json_encode($request->all(),JSON_UNESCAPED_UNICODE),
                 'resp_body'      => $response->rawBody(),
                 'code'           => $response->getStatusCode(),

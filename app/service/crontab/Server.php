@@ -321,7 +321,7 @@ class Server {
                         }
                     } catch (\Throwable $throwable) {
                         $code   = 1;
-                        $output = $throwable->getMessage();
+                        $output .= '--catch到异常'.$throwable->getMessage().'---'.$throwable->getTraceAsString();
                     }
                     if($code==1){
                         if (!is_string($result)){
@@ -330,6 +330,7 @@ class Server {
                         $output.='--result:'.$result;
                     }
                 }
+                $result = boolval($result);
                 break;
             // url任务
             case self::URL_CRONTAB:
