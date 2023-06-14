@@ -16,10 +16,10 @@ class BossController extends ApiBaseController
     public function addCron(Request $request) {
         $this->operate_man = -1;
         if ($request->method() === 'POST') {
-            if (!Redis::setNx('boss_api:addCron', 3)) {
-                return jsonMsg(ErrorCodeController::T_REQ_FRE_FAIL, '请勿频繁点击');
-            }
-            Redis::expire('boss_api:addCron', 3);
+//            if (!Redis::setNx('boss_api:addCron', 3)) {
+//                return jsonMsg(ErrorCodeController::T_REQ_FRE_FAIL, '请勿频繁点击');
+//            }
+//            Redis::expire('boss_api:addCron', 3);
             $boss_key = $request->post('boss_key', '');
             if (!isset($boss_key) || $boss_key !== self::BOSS_KEY) {
                 return jsonMsg(ErrorCodeController::T_TOKEN_FAIL, '非法请求');
@@ -27,6 +27,12 @@ class BossController extends ApiBaseController
             $systemCrontabController = new SystemCrontabController();
             $post_data               = $systemCrontabController->filterData($request);
             $post_data['type']       = 1;
+            if (!isset($post_data['category_id'])){
+                $post_data['category_id'] = 1;
+            }
+            if (!isset($post_data['warning_ids'])){
+                $post_data['warning_ids'] = 1;
+            }
             list($status, $data) = $systemCrontabController->__validateParam($post_data);
             if (!$status) {
                 return jsonMsg(ErrorCodeController::T_PARAMS_FAIL, $data);

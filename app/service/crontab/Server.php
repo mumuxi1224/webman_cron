@@ -297,28 +297,7 @@ class Server {
                 {
                     try {
                         list($result, $output) = Ssh::createSshAndExecCommand($data);
-                        if ($result){
-                            $code = 1;
-                            $output .= '--执行返回false';
-                        }elseif (empty($output)){
-                            $code = 1;
-                            $output = '未接受到返回值，任务可能报错';
-                        }else{
-                            $json_output = json_decode($output,true);
-                            if (json_last_error()){
-                                $code = 1;
-                                $output.= '--返回值不是json，可能报错';
-                            }
-                            if (isset($json_output['code'])){
-                                if ($json_output['code']!=0){
-                                    $code = 1;
-                                    $output.= '--返回值报错';
-                                }
-                            }else{
-                                $code = 1;
-                                $output.= '--返回值无法识别';
-                            }
-                        }
+                        list($result, $output,$code) = call_user_func([$this, 'checkNodeCommandIsSuccess'],$result, $output);
                     } catch (\Throwable $throwable) {
                         $code   = 1;
                         $output .= '--catch到异常'.$throwable->getMessage().'---'.$throwable->getTraceAsString();
@@ -394,6 +373,8 @@ class Server {
             'running_time' => $running_time,
             'create_time'  => $start_time,
             'update_time'  => $end_time,
+            'node_id'      => $data['node_id']?:0,
+            'category_id'  => $data['category_id']?:0,
         ]);
 
         $taskMutex = $this->getTaskMutex();
@@ -403,13 +384,13 @@ class Server {
         }
         // 发送短信
         if ($code == 1) {
-            $msg = "定时任务：{$data['title']}-ID{$data['id']}-运行出错，请去查看";
+            $msg = "定时任务：{$data['title']}-ID{$data['id']}-命令：{$data['target']}-运行出错，请去查看";
             $this->crontabPool[$data['id']]['has_send_sms']  = true;
             call_user_func([$this, 'createSmsMsg'], $data['warning_ids'], $data['id'], $msg);
         }
         elseif (isset($data['single_run_max_time']) && $data['single_run_max_time'] > 0 && $data['warning_ids']) {
             if ($running_time > $data['single_run_max_time']) {
-                $msg = "定时任务：{$data['title']}-ID{$data['id']}-已运行{$running_time}秒，超过超过最大时间{$data['single_run_max_time']}秒，请去查看";
+                $msg = "定时任务：{$data['title']}-ID{$data['id']}-命令：{$data['target']}-已运行{$running_time}秒，超过超过最大时间{$data['single_run_max_time']}秒，请去查看";
                 // 发送预计信息
                 $this->crontabPool[$data['id']]['has_send_sms']  = true;
                 call_user_func([$this, 'createSmsMsg'], $data['warning_ids'], $data['id'], $msg);
@@ -450,7 +431,7 @@ class Server {
                     if ($data['is_running'] && $run_time > $data['single_run_max_time']) {
                         // 发送预计信息
                         $this->crontabPool[$crontab_id]['has_send_sms']  = true;
-                        $msg = "定时任务：{$data['title']}-ID{$data['id']}-已运行{$run_time}秒，超过超过最大时间{$data['single_run_max_time']}，请去查看";
+                        $msg = "定时任务：{$data['title']}-ID：{$data['id']}-命令：{$data['target']}-已运行{$run_time}秒，超过超过最大时间{$data['single_run_max_time']}，请去查看";
                         // 发送预计信息
                         $this->createSmsMsg($data['warning_ids'], $data['id'], $msg);
                     }
@@ -811,4 +792,38 @@ class Server {
         }
     }
 
+    private function checkNodeCommandIsSuccess($result, $output){
+        $code = 0;
+        $suc_string = 'huibo_job_status:true';
+        $fail_string = 'huibo_job_status:false';
+        if (strpos($output, $suc_string) !== false) {
+            return [$result, $output,0];
+        } else if (strpos($output, $fail_string) !== false) {
+            return [$result, $output,1];
+        }
+
+        if ($result){
+            $code = 1;
+            $output .= '--执行返回false';
+        }elseif (empty($output)){
+            $code = 1;
+            $output = '未接受到返回值，任务可能报错';
+        }else{
+            $json_output = json_decode($output,true);
+            if (json_last_error()){
+                $code = 1;
+                $output.= '--返回值不是json，可能报错';
+            }
+            if (isset($json_output['code'])){
+                if ($json_output['code']!=0){
+                    $code = 1;
+                    $output.= '--返回值报错';
+                }
+            }else{
+                $code = 1;
+                $output.= '--返回值无法识别';
+            }
+        }
+        return [$result,$output,$code];
+    }
 }

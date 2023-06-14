@@ -186,6 +186,7 @@
                 
                 // 表格顶部搜索重置事件
                 form.on("submit(table-reset)", function(data) {
+                    layui.$('.xm-icon-close').click()
                     table.reload("data-table", {
                         where:{field:PRIMARY_KEY,order:'desc'},
                     })

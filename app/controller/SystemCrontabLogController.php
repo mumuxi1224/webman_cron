@@ -74,12 +74,32 @@ class SystemCrontabLogController extends MyCrudController {
      * @date 2023/1/13 0013 13:57
      */
     public function getCrontabList(Request $request) {
-        $list         = [];
+        $list         = [
+            'crontab_list'=>[],
+            'node_list'=>[],
+            'cate_list'=>[],
+        ];
         $field        = ['id', 'title'];
         $crontab_info = Db::table(config('crontab.task.crontab_table'))->orderBy('id','desc')->select($field)->get()->toArray();
         foreach ($crontab_info as $item) {
-            $list[] = [
+            $list['crontab_list'][] = [
                 'name'  => $item->title,
+                'value' => $item->id
+            ];
+        }
+        $field        = ['category_id', 'name'];
+        $crontab_info = Db::table('wa_system_crontab_category')->orderBy('category_id','desc')->select($field)->get()->toArray();
+        foreach ($crontab_info as $item) {
+            $list['cate_list'][] = [
+                'name'  => $item->name,
+                'value' => $item->category_id
+            ];
+        }
+        $field        = ['id', 'host','alias'];
+        $crontab_info = Db::table('wa_system_crontab_node')->orderBy('id','desc')->select($field)->get()->toArray();
+        foreach ($crontab_info as $item) {
+            $list['node_list'][] = [
+                'name'  => $item->alias.'('.$item->host.')',
                 'value' => $item->id
             ];
         }

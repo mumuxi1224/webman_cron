@@ -29,6 +29,20 @@
                 </div>
 
                 <div class="layui-form-item">
+                    <label class="layui-form-label">分类ID</label>
+                    <div class="layui-input-block">
+                        <div name="category_id" id="category_id" value="" ></div>
+                    </div>
+                </div>
+
+                <div class="layui-form-item">
+                    <label class="layui-form-label">节点ID</label>
+                    <div class="layui-input-block">
+                        <div name="node_id" id="node_id" value="" ></div>
+                    </div>
+                </div>
+
+                <div class="layui-form-item">
                     <label class="layui-form-label">执行状态</label>
                     <div class="layui-input-block">
                         <div name="return_code" id="return_code" value="" ></div>
@@ -132,7 +146,27 @@
                             el: "#crontab_id",
                             name: "crontab_id",
                             // initValue: initValue,
-                            data: res.data,
+                            data: res.data.crontab_list,
+                            // model: {"icon":"hidden","label":{"type":"text"}},
+                            clickClose: true,
+                            radio: true,
+                            filterable:true // 搜索模式
+                        });
+                        layui.xmSelect.render({
+                            el: "#category_id",
+                            name: "category_id",
+                            // initValue: initValue,
+                            data: res.data.cate_list,
+                            // model: {"icon":"hidden","label":{"type":"text"}},
+                            clickClose: true,
+                            radio: true,
+                            filterable:true // 搜索模式
+                        });
+                        layui.xmSelect.render({
+                            el: "#node_id",
+                            name: "node_id",
+                            // initValue: initValue,
+                            data: res.data.node_list,
                             // model: {"icon":"hidden","label":{"type":"text"}},
                             clickClose: true,
                             radio: true,
@@ -240,6 +274,7 @@
 
                 // 表格顶部搜索重置事件
                 form.on("submit(table-reset)", function(data) {
+                    layui.$('.xm-icon-close').click()
                     table.reload("data-table", {
                         where:{field:PRIMARY_KEY,order:'desc'},
                     })
