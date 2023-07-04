@@ -59,7 +59,7 @@ class Ssh {
             ->as($data['username'])
 //            ->withPassword('password')
             ->withPrivateKey($rsa_file)
-             ->timeout(999)
+             ->timeout(1800)
             ->connect();
         if ($data['code_dir']) {
             $data['target'] = 'cd ' . $data['code_dir'] . ' && ' . $data['target'];

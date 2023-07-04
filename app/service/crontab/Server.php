@@ -595,7 +595,8 @@ class Server {
             $this->crontabPool[$param['id']]['crontab']->destroy();
             $taskMutex = $this->getTaskMutex();
             $taskMutex->remove($this->crontabPool[$param['id']]);
-            unset($this->crontabPool[$param['id']]);
+            // 只清除定时器
+            unset($this->crontabPool[$param['id']]['crontab']);
         }
         if ($param['status'] == self::NORMAL_STATUS) {
             $this->execJob($param['id']);
