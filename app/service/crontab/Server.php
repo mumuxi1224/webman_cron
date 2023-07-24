@@ -165,10 +165,15 @@ class Server {
 
 
     public function onMessage(TcpConnection $connection, $data) {
-        $data   = json_decode($data, true);
-        $method = $data['method'];
-        $args   = $data['args'];
-        $connection->send(call_user_func([$this, $method], $args));
+        try {
+            $data   = json_decode($data, true);
+            $method = $data['method'];
+            $args   = $data['args'];
+            $connection->send(call_user_func([$this, $method], $args));
+        }catch (\Exception $exception){
+            var_dump($exception->getTraceAsString());
+            $connection->send(json_encode(['code' => 0, 'msg' => $exception->getMessage() ]));
+        }
     }
 
 
@@ -592,7 +597,9 @@ class Server {
             ->where('id', $param['id'])
             ->update($param);
         if (isset($this->crontabPool[$param['id']])) {
-            $this->crontabPool[$param['id']]['crontab']->destroy();
+            if (isset($this->crontabPool[$param['id']]['crontab'])){
+                $this->crontabPool[$param['id']]['crontab']->destroy();
+            }
             $taskMutex = $this->getTaskMutex();
             $taskMutex->remove($this->crontabPool[$param['id']]);
             // 只清除定时器
