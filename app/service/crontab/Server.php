@@ -6,6 +6,8 @@ namespace app\service\crontab;
 use app\model\SystemCrontabWarn;
 use app\service\Ssh;
 use support\Container;
+use Swoole\Database\PDOConfig;
+use Swoole\Database\PDOPool;
 use think\Exception;
 use think\facade\Db;
 use Workerman\Connection\TcpConnection;
@@ -112,6 +114,13 @@ class Server {
         'rule'        => '0 */1 * * * *',
     ];
 
+    /**
+     * @var \Swoole\Database\PDOPool;
+     */
+    private $dbPoll = null;
+
+    private $warn_infos = [];
+
     public function __construct() {
     }
 
@@ -143,6 +152,8 @@ class Server {
         $this->crontabLogTable  = $config['crontab_table_log'];
         $this->crontabNodeTable = $config['crontab_table_node'];
         $this->worker           = $worker;
+        $this->initDbPoll();
+        $this->initWarnInfo();
         $this->delTaskMutex();
         $this->checkCrontabTables();
         $this->crontabInit();
@@ -274,7 +285,14 @@ class Server {
         if ($this->crontabPool[$data['id']]['end_time'] > 0 && time() >= $this->crontabPool[$data['id']]['end_time']) {
             $this->crontabPool[$data['id']]['crontab']->destroy();
             unset($this->crontabPool[$data['id']]);
-            Db::table($this->crontabTable)->where('id', $data['id'])->update(['status'=>0]);
+            $db = $this->dbPoll->get();
+            $update_sql = $this->arraysToUpdate($this->crontabTable,['status = 0'],['id'=>$data['id']]);
+            $db->exec($update_sql);
+            $this->dbPoll->put($db);
+            $taskMutex = $this->getTaskMutex();
+            $taskMutex->remove($data);
+//            Db::table($this->crontabTable)->where('id', $data['id'])->update(['status'=>0]);
+//            $this->dbPoll->get();
             return false;
         }
         $this->crontabPool[$data['id']]['is_running']    = true;
@@ -359,8 +377,9 @@ class Server {
     private function afterRunJob($data, $code, $output, $start_time, $running_time, $last_run_time) {
         $end_time   = time();
         $update_arr = [
-            'last_running_time' => $last_run_time,
-            'running_times'     => Db::raw('running_times+1'),
+            "last_running_time = {$last_run_time}",
+            //            'running_times'     => Db::raw('running_times+1'),
+            "running_times = running_times+1",
         ];
         // 如果到达了结束时间
         if ($this->crontabPool[$data['id']]['end_time'] > 0 && $end_time >= $this->crontabPool[$data['id']]['end_time']) {
@@ -368,20 +387,43 @@ class Server {
             $this->crontabPool[$data['id']]['crontab']->destroy();
             unset($this->crontabPool[$data['id']]);
         }
-        Db::table($this->crontabTable)->where('id', $data['id'])->update($update_arr);
-        $this->writeLog && $this->crontabRunLog([
-            'crontab_id'   => $data['id'],
-            'target'       => $data['target'],
-            'parameter'    => $this->worker->id,
-            'exception'    => $output,
-            'return_code'  => $code,
-            'running_time' => $running_time,
-            'create_time'  => $start_time,
-            'update_time'  => $end_time,
-            'node_id'      => $data['node_id']?:0,
-            'category_id'  => $data['category_id']?:0,
-        ]);
-
+        if ($update_arr){
+            $db = $this->dbPoll->get();
+            $update_sql = $this->arraysToUpdate($this->crontabTable,$update_arr,['id'=>$data['id']]);
+            $db->exec($update_sql);
+            $this->dbPoll->put($db);
+        }
+//        Db::table($this->crontabTable)->where('id', $data['id'])->update($update_arr);
+//        $this->writeLog && $this->crontabRunLog([
+//            'crontab_id'   => $data['id'],
+//            'target'       => $data['target'],
+//            'parameter'    => $this->worker->id,
+//            'exception'    => $output,
+//            'return_code'  => $code,
+//            'running_time' => $running_time,
+//            'create_time'  => $start_time,
+//            'update_time'  => $end_time,
+//            'node_id'      => $data['node_id']?:0,
+//            'category_id'  => $data['category_id']?:0,
+//        ]);
+        if($this->writeLog){
+            $log_arr = [
+                'crontab_id'   => $data['id'],
+                'target'       => $data['target'],
+                'parameter'    => $this->worker->id,
+                'exception'    => $output,
+                'return_code'  => $code,
+                'running_time' => $running_time,
+                'create_time'  => $start_time,
+                'update_time'  => $end_time,
+                'node_id'      => $data['node_id']?:0,
+                'category_id'  => $data['category_id']?:0,
+            ];
+            $db = $this->dbPoll->get();
+            $log_ins_sql = $this->arrayToInsert('wa_system_crontab_log',$log_arr);
+            $db->exec($log_ins_sql);
+            $this->dbPoll->put($db);
+        }
         $taskMutex = $this->getTaskMutex();
         $taskMutex->remove($data);
         if (isset($this->crontabPool[$data['id']])) {
@@ -532,7 +574,7 @@ class Server {
         $id                   = Db::table($this->crontabTable)
             ->insertGetId($param);
         $id && $this->execJob($id);
-
+        $this->initWarnInfo();
         return json_encode(['code' => 200, 'msg' => 'ok', 'data' => ['code' => (bool)$id,'pk'=>$id]]);
     }
 
@@ -608,7 +650,7 @@ class Server {
         if ($param['status'] == self::NORMAL_STATUS) {
             $this->execJob($param['id']);
         }
-
+        $this->initWarnInfo();
         return json_encode(['code' => 200, 'msg' => 'ok', 'data' => ['code' => (bool)$row,'pk'=>$param['id']]]);
 
     }
@@ -716,8 +758,9 @@ class Server {
             return false;
         }
         $now       = time();
-        $warn_info = SystemCrontabWarn::getWarnCache();
-        if ($warn_info) $warn_info = array_column($warn_info, null, 'warn_id');
+//        $warn_info = SystemCrontabWarn::getWarnCache();
+//        if ($warn_info) $warn_info = array_column($warn_info, null, 'warn_id');
+        $warn_info = $this->warn_infos;
         $base_url = getenv('CP_URL');
         $key      = getenv('CP_KEY');
         $open_sms = getenv('CP_SEND_MSG');
@@ -768,7 +811,11 @@ class Server {
         }
         $this->smsData['is_running'] = true;
         if ($this->smsData['warn_insert']) {
-            Db::table('wa_system_crontab_warn_history')->insertAll($this->smsData['warn_insert'], 500);
+            $db = $this->dbPoll->get();
+            $log_ins_sql = $this->generateBatchInsertSQL('wa_system_crontab_warn_history',$this->smsData['warn_insert']);
+            $db->exec($log_ins_sql);
+            $this->dbPoll->put($db);
+//            Db::table('wa_system_crontab_warn_history')->insertAll($this->smsData['warn_insert'], 500);
         }
         $this->smsData['warn_insert'] = [];
         $request_url                  = [];
@@ -833,5 +880,70 @@ class Server {
             }
         }
         return [$result,$output,$code];
+    }
+
+    private function initDbPoll(){
+        if (is_null($this->dbPoll)){
+            $this->dbPoll = new PDOPool((new PDOConfig)
+                ->withHost(getenv('DB_HOST'))
+                ->withPort(intval(getenv('DB_PORT')))
+                // ->withUnixSocket('/tmp/mysql.sock')
+                ->withDbName(getenv('DB_NAME'))
+                ->withCharset('utf8mb4')
+                ->withUsername( getenv('DB_USER'))
+                ->withPassword(getenv('DB_PASSWORD'))
+                ,10);
+        }
+    }
+
+    function arrayToInsert($table, $data) {
+        $columns = implode(', ', array_keys($data));
+        $values = array_map(function($value) {
+            if (is_string($value)) {
+                $value = "'" . addslashes($value) . "'";
+            }
+            return $value;
+        }, array_values($data));
+        $values = implode(', ', $values);
+        $sql = "INSERT INTO $table ($columns) VALUES ($values)";
+        return $sql;
+    }
+
+    function arraysToUpdate($table, $data, $condition) {
+        $set = [];
+        foreach ($data as $key => $value) {
+            $set[] = $value;
+        }
+        $set = implode(", ", $set);
+
+        $where = [];
+        foreach ($condition as $key => $value) {
+            $where[] = "$key = '$value'";
+        }
+        $where = implode(" AND ", $where);
+
+        $sql = "UPDATE $table SET $set WHERE $where";
+        return $sql;
+    }
+
+    function generateBatchInsertSQL($tableName, $fields) {
+        $columns = implode(', ', array_keys($fields[0]));
+
+        $values = [];
+        foreach ($fields as $row) {
+            $rowValues = implode("', '", array_values($row));
+            $values[] = "('$rowValues')";
+        }
+
+        $valuesString = implode(', ', $values);
+
+        $insertStatement = "INSERT INTO $tableName ($columns) VALUES $valuesString";
+
+        return $insertStatement;
+    }
+
+    private function initWarnInfo(){
+        $this->warn_infos = SystemCrontabWarn::getWarnCache();
+        if ($this->warn_infos) $this->warn_infos = array_column($this->warn_infos, null, 'warn_id');
     }
 }
