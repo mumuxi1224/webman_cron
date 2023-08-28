@@ -77,6 +77,9 @@ class MyCrudController extends Crud {
         if (!empty($where['title'])){
             $where['title'] = ['like','%'.$where['title'].'%'];
         }
+        if (!empty($where['target'])){
+            $where['target'] = ['like','%'.$where['target'].'%'];
+        }
         return $where;
     }
 }

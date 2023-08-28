@@ -79,11 +79,11 @@ class SystemCrontabLogController extends MyCrudController {
             'node_list'=>[],
             'cate_list'=>[],
         ];
-        $field        = ['id', 'title'];
+        $field        = ['id', 'title','target'];
         $crontab_info = Db::table(config('crontab.task.crontab_table'))->orderBy('id','desc')->select($field)->get()->toArray();
         foreach ($crontab_info as $item) {
             $list['crontab_list'][] = [
-                'name'  => $item->title,
+                'name'  => $item->title.'('.$item->target.')',
                 'value' => $item->id
             ];
         }
@@ -118,6 +118,9 @@ class SystemCrontabLogController extends MyCrudController {
             else {
                 unset($where['create_time']);
             }
+        }
+        if (!empty($where['target'])){
+            $where['target'] = ['like','%'.$where['target'].'%'];
         }
         return $where;
     }
