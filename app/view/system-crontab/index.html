@@ -27,7 +27,14 @@
                             <input type="text" name="title" value="" class="layui-input">
                         </div>
                     </div>
-                    
+
+                    <div class="layui-form-item">
+                        <label class="layui-form-label">执行命令</label>
+                        <div class="layui-input-block">
+                            <input type="text" name="target" value="" class="layui-input">
+                        </div>
+                    </div>
+
                     <div class="layui-form-item">
                         <label class="layui-form-label">任务类型</label>
                         <div class="layui-input-block">
@@ -102,9 +109,12 @@
             <button class="pear-btn pear-btn-warming pear-btn-md" lay-event="cron" permission="systemcrontab.cron">
                 <i class="layui-icon layui-icon-engine"></i>时间表达式在线校验
             </button>
-            <button class="pear-btn pear-btn-danger pear-btn-md" lay-event="export_cron" permission="systemcrontab.export">
-                <i class="layui-icon layui-icon-engine"></i>定时任务导入
-            </button>
+<!--            <button class="pear-btn pear-btn-danger pear-btn-md" lay-event="export_cron" permission="systemcrontab.export">-->
+<!--                <i class="layui-icon layui-icon-engine"></i>定时任务导入-->
+<!--            </button>-->
+<!--            <button class="pear-btn pear-btn-danger pear-btn-md" lay-event="ssh_channel_status" permission="systemcrontab.insert">-->
+<!--                <i class="layui-icon layui-icon-engine"></i>连接池状态-->
+<!--            </button>-->
         </script>
 
         <script type="text/html" id="status-bar">
@@ -119,8 +129,12 @@
 
         <!-- 表格行工具栏 -->
         <script type="text/html" id="table-bar">
-            <button class="pear-btn pear-btn-xs tool-btn" lay-event="edit" permission="systemcrontab.update">编辑</button>
-            <button class="pear-btn pear-btn-xs tool-btn _set_status" lay-event="remove" permission="systemcrontab.delete">状态</button>
+            <button class="pear-btn pear-btn-warming tool-btn" lay-event="edit" permission="systemcrontab.update">编辑</button>
+            <button class="pear-btn pear-btn-primary tool-btn _set_status" lay-event="remove" permission="systemcrontab.delete">状态</button>
+<!--            <button class="pear-btn pear-btn-danger tool-btn _set_status" lay-event="run_now" permission="systemcrontab.update">立即执行</button>-->
+<!--            <button class="pear-btn pear-btn-danger tool-btn _set_status" lay-event="remove" permission="systemcrontab.update">立即执行</button>-->
+<!--            <button class="pear-btn pear-btn-danger tool-btn _set_status" lay-event="remove" permission="systemcrontab.update">立即执行</button>-->
+<!--            <button class="pear-btn pear-btn-danger tool-btn _set_status" lay-event="remove" permission="systemcrontab.update">立即执行</button>-->
 <!--            <button class="pear-btn pear-btn-xs tool-btn" lay-event="run_log" permission="systemcrontab.run_log">查看运行日志</button>-->
 <!--            <button class="pear-btn pear-btn-xs tool-btn" lay-event="warn_log" permission="systemcrontab.warn_log">查看预警日志</button>-->
         </script>
@@ -137,8 +151,10 @@
             const SELECT_API = "/system-crontab/select";
             const UPDATE_API = "/system-crontab/update";
             const DELETE_API = "/system-crontab/delete";
+            const RUN_NOW_API = "/system-crontab/runNow";
             const INSERT_URL = "/system-crontab/insert";
             const EXPORT_CRON_URL = "/system-crontab/export";
+            const SSH_CHANNEL_STATUS = "/system-crontab/sshChannelStatus";
             const UPDATE_URL = "/system-crontab/update";
             const RUN_LOG_URL = "/system-crontab-log/select";
             const WARN_LOG_URL = "/system-crontab-warn/update";
@@ -288,9 +304,7 @@
 					},{
 						title: "操作",
 						toolbar: "#table-bar",
-						align: "center",
-						fixed: "right",
-						width: 120,
+                        width: '300',
 					}
 				];
 				
@@ -322,6 +336,8 @@
                         remove(obj);
                     } else if (obj.event === "edit") {
                         edit(obj);
+                    }else if(obj.event === 'run_now'){
+                        run_now(obj)
                     }
                     // else if (obj.event === "run_log") {
                     //     run_log(obj);
@@ -342,6 +358,8 @@
                         window.open('http://cron.ciding.cc/','_blank');
                     } else if (obj.event === "export_cron") {
                         export_cron(obj)
+                    } else if (obj.event === "ssh_channel_status") {
+                        ssh_channel_status()
                     }
                 });
 
@@ -350,6 +368,9 @@
                     data.field['order']='desc';
                     data.field['field']=PRIMARY_KEY;
                     table.reload("data-table", {
+                        page:{
+                            curr: 1
+                        },
                         where: data.field
                     })
                     return false;
@@ -424,8 +445,32 @@
 
                 // 删除一行
                 let remove = function(obj) {
-                    console.log(obj)
                     return doRemove(obj.data[PRIMARY_KEY],obj.data['status']);
+                }
+
+                let run_now = function (obj){
+                    let data = {};
+                    data[PRIMARY_KEY] = obj.data[PRIMARY_KEY];
+                    layer.confirm("确定立刻执行此定时任务吗？", {
+                        icon: 3,
+                        title: "提示"
+                    }, function(index) {
+                        layer.close(index);
+                        let loading = layer.load();
+                        $.ajax({
+                            url: RUN_NOW_API,
+                            data: data,
+                            dataType: "json",
+                            type: "post",
+                            success: function(res) {
+                                layer.close(loading);
+                                if (res.code) {
+                                    return layui.popup.failure(res.msg);
+                                }
+                                return layui.popup.success(res.msg, refreshTable);
+                            }
+                        })
+                    });
                 }
 
                 // 删除多行
@@ -447,7 +492,34 @@
                         content: EXPORT_CRON_URL
                     });
                 }
-                // 执行删除
+
+                let ssh_channel_status = function (){
+                    let loading = layer.load();
+                    $.ajax({
+                        url: SSH_CHANNEL_STATUS,
+                        data: {},
+                        dataType: "json",
+                        type: "post",
+                        success: function(res) {
+                            console.log(res)
+                            layer.close(loading);
+                            if (res.code) {
+                                return layui.popup.failure(res.msg);
+                            }
+                            layer.open({
+                                type: 1,
+                                title: "SSH连接状态",
+                                shade: 0.1,
+                                area: [common.isModile()?"100%":"700px", common.isModile()?"100%":"800px"],
+                                content: '<pre>' + res.data + '</pre>',
+                            });
+                        }
+                    })
+
+
+                }
+
+                // 设置状态
                 let doRemove = function (ids,status) {
                     let data = {};
                     tips = status==1?"禁用?":'启用?'

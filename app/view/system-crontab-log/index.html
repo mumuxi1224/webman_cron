@@ -29,6 +29,13 @@
                 </div>
 
                 <div class="layui-form-item">
+                    <label class="layui-form-label">执行命令</label>
+                    <div class="layui-input-block">
+                        <input type="text" name="target" value="" class="layui-input">
+                    </div>
+                </div>
+
+                <div class="layui-form-item">
                     <label class="layui-form-label">分类ID</label>
                     <div class="layui-input-block">
                         <div name="category_id" id="category_id" value="" ></div>
@@ -267,6 +274,9 @@
                     data.field['order']='desc';
                     data.field['field']=PRIMARY_KEY;
                     table.reload("data-table", {
+                        page:{
+                            curr: 1
+                        },
                         where: data.field
                     })
                     return false;
