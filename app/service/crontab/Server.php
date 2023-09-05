@@ -152,6 +152,7 @@ class Server {
         $this->crontabLogTable  = $config['crontab_table_log'];
         $this->crontabNodeTable = $config['crontab_table_node'];
         $this->worker           = $worker;
+        Ssh::buildPrivateKeyContent();
         $this->initDbPoll();
         $this->initWarnInfo();
         $this->delTaskMutex();

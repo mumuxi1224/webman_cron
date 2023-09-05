@@ -8,8 +8,14 @@
 namespace app\service;
 
 use DivineOmega\SSHConnection\SSHConnection;
+use support\Db;
 
 class Ssh {
+
+    /**
+     * @var array
+     */
+    private static $privateKeyContent = [];
 
     /**
      * 获取rsa文件位置
@@ -48,6 +54,9 @@ class Ssh {
      */
     public static function createSshAndExecCommand(array $data) {
         $rsa_file = self::getRsaFilePath($data['node_id']);
+        if (!isset(self::$privateKeyContent[$data['node_id']])) {
+            self::$privateKeyContent[$data['node_id']] = file_get_contents($rsa_file);
+        }
 //        $process = \Spatie\Ssh\Ssh::create($data['username'], $data['host'])
 //            ->usePort($data['port'])
 //            ->usePrivateKey($rsa_file)
@@ -58,8 +67,9 @@ class Ssh {
             ->onPort($data['port'])
             ->as($data['username'])
 //            ->withPassword('password')
-            ->withPrivateKey($rsa_file)
-             ->timeout(1800)
+//            ->withPrivateKey($rsa_file)
+            ->withPrivateKeyContent(self::$privateKeyContent[$data['node_id']])
+            ->timeout(1800)
             ->connect();
         if ($data['code_dir']) {
             $data['target'] = 'cd ' . $data['code_dir'] . ' && ' . $data['target'];
@@ -75,13 +85,24 @@ class Ssh {
         $error   = $command->getError();
         $exc = $output . $error;
         if (strpos($exc, 'No such file or directory')!==false) {
-            return [true, '请检查代码运行路径' . $data['code_dir'] . '是否存在！'];
+            return [true, '请检查代码运行路径' . $data['code_dir'] . '是否存在！-'.$exc];
         }
         if (strpos($exc, 'Could not open input file')!==false) {
-            return [true, '入口文件'.$data['index_name'].'不存在！'];
+            return [true, '入口文件'.$data['index_name'].'不存在！-'.$exc];
         }
 //        $connection->disconnect();
         return [$error, $output];
+    }
+
+    public static function buildPrivateKeyContent(){
+        $node_list = Db::table('wa_system_crontab_node')->select(['id as node_id'])->get();
+        if ($node_list->isNotEmpty()){
+            $node_list = $node_list->toArray();
+            foreach ($node_list as $n){
+                $rsa_file = self::getRsaFilePath($n->node_id);
+                self::$privateKeyContent[$n->node_id] = file_get_contents($rsa_file);
+            }
+        }
     }
 
     /**
