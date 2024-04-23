@@ -6,12 +6,12 @@ namespace app\service\crontab;
 class Client
 {
 
-    private $client;
+//    private $client;
     protected static $instance = null;
 
     public function __construct()
     {
-        $this->client = stream_socket_client('tcp://' . getenv('CRONTAB_LISTEN'));
+//        $this->client = stream_socket_client('tcp://' . getenv('CRONTAB_LISTEN'));
     }
 
     public static function instance()
@@ -28,8 +28,14 @@ class Client
      */
     public function request(array $param)
     {
-        fwrite($this->client, json_encode($param) . "\n"); // text协议末尾有个换行符"\n"
-        $result = fgets($this->client, 10240000);
+        $client =  stream_socket_client('tcp://' . getenv('CRONTAB_LISTEN'));
+        fwrite($client, json_encode($param) . "\n"); // text协议末尾有个换行符"\n"
+        $result = fgets($client, 10240000);
+        if(!$result){
+            fwrite($client, json_encode($param) . "\n"); // text协议末尾有个换行符"\n"
+            $result = fgets($client, 10240000);
+//            self::$instance = new static();
+        }
         return json_decode($result,true);
     }
 
