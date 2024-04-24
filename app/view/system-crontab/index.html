@@ -8,7 +8,17 @@
         <link rel="stylesheet" href="/app/admin/admin/css/reset.css" />
     </head>
     <body class="pear-container">
-    
+    <style>
+        /*#table-bar {*/
+        /*    display: flex;*/
+        /*    flex-wrap: wrap;*/
+        /*}*/
+
+        /*.tool-btn {*/
+        /*    flex-grow: 1;*/
+        /*    margin-right: 5px; !* 按钮间距 *!*/
+        /*}*/
+    </style>
         <!-- 顶部查询表单 -->
         <div class="layui-card">
             <div class="layui-card-body">
@@ -128,16 +138,17 @@
         </script>
 
         <!-- 表格行工具栏 -->
-        <script type="text/html" id="table-bar">
-            <button class="pear-btn pear-btn-warming tool-btn" lay-event="edit" permission="systemcrontab.update">编辑</button>
-            <button class="pear-btn pear-btn-primary tool-btn _set_status" lay-event="remove" permission="systemcrontab.delete">状态</button>
-<!--            <button class="pear-btn pear-btn-danger tool-btn _set_status" lay-event="run_now" permission="systemcrontab.update">立即执行</button>-->
-<!--            <button class="pear-btn pear-btn-danger tool-btn _set_status" lay-event="remove" permission="systemcrontab.update">立即执行</button>-->
-<!--            <button class="pear-btn pear-btn-danger tool-btn _set_status" lay-event="remove" permission="systemcrontab.update">立即执行</button>-->
-<!--            <button class="pear-btn pear-btn-danger tool-btn _set_status" lay-event="remove" permission="systemcrontab.update">立即执行</button>-->
-<!--            <button class="pear-btn pear-btn-xs tool-btn" lay-event="run_log" permission="systemcrontab.run_log">查看运行日志</button>-->
-<!--            <button class="pear-btn pear-btn-xs tool-btn" lay-event="warn_log" permission="systemcrontab.warn_log">查看预警日志</button>-->
-        </script>
+    <script type="text/html" id="table-bar">
+        <button class="pear-btn pear-btn-warming tool-btn" lay-event="edit" permission="systemcrontab.update">编辑</button>
+        <button class="pear-btn pear-btn-primary tool-btn _set_status" lay-event="remove" permission="systemcrontab.delete">状态</button>
+        <button class="pear-btn pear-btn-sm" id="more_{{d.id}}"><i class="layui-icon layui-icon-triangle-d"></i></button>
+
+        <!--        <button class="pear-btn pear-btn-danger tool-btn _set_status" lay-event="run_now" permission="systemcrontab.update">立即执行</button>-->
+<!--        <button class="pear-btn pear-btn-danger tool-btn _set_status" lay-event="remove" permission="systemcrontab.update">立即执行</button>-->
+<!--        <button class="pear-btn pear-btn-danger tool-btn _set_status" lay-event="remove" permission="systemcrontab.update">立即执行</button>-->
+<!--        <button class="pear-btn pear-btn-xs tool-btn" lay-event="run_log" permission="systemcrontab.run_log">查看运行日志</button>-->
+<!--        <button class="pear-btn pear-btn-xs tool-btn" lay-event="warn_log" permission="systemcrontab.warn_log">查看预警日志</button>-->
+    </script>
 
         <script src="/app/admin/component/layui/layui.js"></script>
         <script src="/app/admin/component/pear/pear.js"></script>
@@ -158,15 +169,26 @@
             const UPDATE_URL = "/system-crontab/update";
             const RUN_LOG_URL = "/system-crontab-log/select";
             const WARN_LOG_URL = "/system-crontab-warn/update";
+            const GET_RUN_STATUS = "/system-crontab/getRunStatus";
+
 
 
             // 表格渲染
-            layui.use(["table", "form", "common", "popup", "util"], function() {
+            layui.use(["table", "form", "common", "popup", "util", 'dropdown'], function() {
                 let table = layui.table;
                 let form = layui.form;
                 let $ = layui.$;
                 let common = layui.common;
                 let util = layui.util;
+                let dropdown = layui.dropdown;
+
+                $(document).ready(function() {
+                    $('.toggle-btn').removeClass('layui-hide'); // 移除toggle-btn的layui-hide类
+                    $('.toggle-btn a').removeClass('layui-hide'); // 显示所有toggle-btn中的a标签
+
+                    // 触发展开按钮的点击事件
+                    $('.toggle-btn a:eq(0)').trigger('click');
+                });
 
                 // 字段 定时任务 crontab_id
                 layui.use(["jquery", "xmSelect", "popup"], function() {
@@ -281,30 +303,34 @@
 					},{
 						title: "任务分类",
 						field: "category_name",
-					},{
-						title: "单次运行最大时间（单位：秒）",
-						field: "single_run_max_time",
-					},{
+					},
+                    // {
+					// 	title: "单次运行最大时间（单位：秒）",
+					// 	field: "single_run_max_time",
+					// },
+                    {
 						title: "结束时间",
 						field: "end_time",
-					},{
-						title: "预警人信息",
-						field: "warning_ids",
-                        templet: function (d) {
-                            if (d.warn_info){
-                                let html = ''
-                                for (let i=0;i<d.warn_info.length;i++){
-                                    html+=d.warn_info[i]+`<br>`;
-                                }
-                                return html;
-                            }
-                            return '';
-
-                        }
-					},{
+					},
+                    // {
+					// 	title: "预警人信息",
+					// 	field: "warning_ids",
+                    //     templet: function (d) {
+                    //         if (d.warn_info){
+                    //             let html = ''
+                    //             for (let i=0;i<d.warn_info.length;i++){
+                    //                 html+=d.warn_info[i]+`<br>`;
+                    //             }
+                    //             return html;
+                    //         }
+                    //         return '';
+                    //
+                    //     }
+					// },
+                    {
 						title: "操作",
 						toolbar: "#table-bar",
-                        width: '300',
+                        width: '250',
 					}
 				];
 				
@@ -324,8 +350,29 @@
 				        layEvent: "refresh",
 				        icon: "layui-icon-refresh",
 				    }, "filter"],
-				    done: function () {
-				        layer.photos({photos: 'div[lay-id="data-table"]', anim: 5});
+				    done: function (res, curr, count) {
+				        // layer.photos({photos: 'div[lay-id="data-table"]', anim: 5});
+                        for (let i = 0; i < res.data.length; i++) {
+                            dropdown.render({
+                                elem: '#more_' + res.data[i].id,
+                                data: [{
+                                    title: '查看运行状态',
+                                    row: res.data[i],
+                                    type:'get_run_status',
+                                },
+                                ],
+                                id: '#more_' + res.data[i].id,
+                                click: function(obj) {
+                                    console.log(obj)
+                                    if (obj.type === 'get_run_status') {
+                                        get_run_status(obj.row)
+                                    }
+                                    // layer.tips('点击了：' + obj.title, this.elem, {
+                                    //     tips: [1, '#5FB878']
+                                    // })
+                                }
+                            });
+                        }
 				    }
 				});
 				
@@ -545,6 +592,30 @@
                             }
                         })
                     });
+                }
+
+                // 当前运行状态
+                let get_run_status = function(obj){
+                    console.log(obj)
+                    let loading = layer.load();
+                    $.ajax({
+                        url: GET_RUN_STATUS,
+                        data: {id:obj.id},
+                        dataType: "json",
+                        type: "post",
+                        success: function(res) {
+                            layer.close(loading);
+                            layer.msg(res.msg, {
+                                icon: 1,  // 成功图标
+                                time: 5000 // 显示时间为 5 秒（单位：毫秒）
+                            });
+                            // layui.popup.success(res.msg);
+                            // if (res.code) {
+                            //     return layui.popup.failure(res.msg);
+                            // }
+                            // return layui.popup.success("操作成功", refreshTable);
+                        }
+                    })
                 }
 
                 // 刷新表格数据

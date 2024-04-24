@@ -203,6 +203,14 @@
                 let common = layui.common;
                 let util = layui.util;
 
+                $(document).ready(function() {
+                    $('.toggle-btn').removeClass('layui-hide'); // 移除toggle-btn的layui-hide类
+                    $('.toggle-btn a').removeClass('layui-hide'); // 显示所有toggle-btn中的a标签
+
+                    // 触发展开按钮的点击事件
+                    $('.toggle-btn a:eq(0)').trigger('click');
+                });
+
 				// 表头参数
 				let cols = [
 					{
