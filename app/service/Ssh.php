@@ -7,6 +7,7 @@
 
 namespace app\service;
 
+use app\model\SystemCrontabNode;
 use DivineOmega\SSHConnection\SSHConnection;
 use support\Db;
 
@@ -17,6 +18,7 @@ class Ssh {
      */
     private static $privateKeyContent = [];
 
+    private static $lock;
     /**
      * 获取rsa文件位置
      * @param int $node_id system_crontab_node 主键
@@ -57,6 +59,15 @@ class Ssh {
         if (!isset(self::$privateKeyContent[$data['node_id']])) {
             self::$privateKeyContent[$data['node_id']] = file_get_contents($rsa_file);
         }
+        $node_cache = SystemCrontabNode::getNodeCache();
+        if (!isset($node_cache[$data['node_id']])){
+            return [false, '节点不存在'];
+        }
+        $data['host'] = $node_cache[$data['node_id']]['host'];
+        $data['port'] = $node_cache[$data['node_id']]['port'];
+        $data['username'] = $node_cache[$data['node_id']]['username'];
+        $data['code_dir'] = $node_cache[$data['node_id']]['code_dir'];
+
 //        $process = \Spatie\Ssh\Ssh::create($data['username'], $data['host'])
 //            ->usePort($data['port'])
 //            ->usePrivateKey($rsa_file)
@@ -94,6 +105,11 @@ class Ssh {
         return [$error, $output];
     }
 
+    /**
+     * 初始化私钥文件
+     * @author guoliangchen
+     * @date 2023/9/6 0006 13:47
+     */
     public static function buildPrivateKeyContent(){
         $node_list = Db::table('wa_system_crontab_node')->select(['id as node_id'])->get();
         if ($node_list->isNotEmpty()){
@@ -103,43 +119,6 @@ class Ssh {
                 self::$privateKeyContent[$n->node_id] = file_get_contents($rsa_file);
             }
         }
-    }
-
-    /**
-     * 检查要执行的命令是否安全
-     * @param string $command
-     * @return array
-     * @author guoliangchen
-     * @date 2023/1/29 0029 17:07
-     */
-    public static function checkCommandIsDanger(string $command): array {
-        if (!$command) {
-            return [false, '命令不存在'];
-        }
-        $command_arr = explode(' ', $command);
-        $command_arr = array_filter($command_arr, function ($v) {
-            return $v ? true : false;
-        });
-        if ($command_arr[0] == 'php') {
-            unset($command_arr[0]);
-        }
-        if (!isset($command_arr[1])) {
-            return [false, '请输入要执行的定时任务文件！'];
-        }
-        $new_command = [];
-        foreach ($command_arr as $key => $value) {
-            if (empty($value)) {
-                continue;
-            }
-            $value = trim($value);
-
-
-        }
-        if (empty($new_command)) {
-            return [false, '命令不合法！'];
-        }
-
-        return [true, 'ok'];
     }
 
 }

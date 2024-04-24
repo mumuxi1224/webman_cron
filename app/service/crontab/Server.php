@@ -121,6 +121,12 @@ class Server {
 
     private $warn_infos = [];
 
+    /**
+     * 输出内容入库的最大长度
+     * @var int
+     */
+    private $output_limit = 1000;
+
     public function __construct() {
     }
 
@@ -408,6 +414,10 @@ class Server {
 //            'category_id'  => $data['category_id']?:0,
 //        ]);
         if($this->writeLog){
+            if (mb_strlen($output) > $this->output_limit) {
+                $output = mb_substr($output, 0, $this->output_limit);
+                $output .= '...';
+            }
             $log_arr = [
                 'crontab_id'   => $data['id'],
                 'target'       => $data['target'],
@@ -943,8 +953,64 @@ class Server {
         return $insertStatement;
     }
 
+    /**
+     * chush初始化预警信息
+     * @author guoliangchen
+     * @date 2024/4/24 0024 18:41
+     */
     private function initWarnInfo(){
         $this->warn_infos = SystemCrontabWarn::getWarnCache();
         if ($this->warn_infos) $this->warn_infos = array_column($this->warn_infos, null, 'warn_id');
+    }
+
+    /**
+     *  获取运行状态
+     * @param array $param
+     * @return string
+     * @author guoliangchen
+     * @date 2024/4/24 0024 19:20
+     */
+    private function getRunStatus(array $param): string {
+        $id  = $param['id'] ?? [];
+        $return_data = ['msg'=>''];
+        if (!isset( $this->crontabPool[$id] )){
+            $return_data['msg'] = '当前任务未启用';
+            return json_encode(['code' => 200, 'msg' => 'ok', 'data' => $return_data]);
+        }else{
+            if ($this->crontabPool[$id]['is_running']){
+                $cost_time = time() - $this->crontabPool[$id]['last_run_time'];
+                $run_time_str = $this->formatSeconds($cost_time);
+                $return_data['msg'] = '当前任务正在运行中，执行开始时间：'.date('Y-m-d H:i:s',$this->crontabPool[$id]['last_run_time']).",当前执行耗时：".$run_time_str;
+            }else{
+                $return_data['msg'] = '当前任务未运行';
+            }
+        }
+
+
+        return json_encode(['code' => 200, 'msg' => 'ok', 'data' => $return_data]);
+    }
+
+    /**
+     * 格式化时间
+     * @param $seconds
+     * @return string
+     * @author guoliangchen
+     * @date 2024/4/24 0024 18:47
+     */
+    function formatSeconds($seconds) {
+        if ($seconds < 60) {
+            return "{$seconds}秒";
+        } elseif ($seconds < 3600) {
+            $minutes = floor($seconds / 60);
+            return "{$minutes}分钟";
+        } elseif ($seconds < 86400) {
+            $hours = floor($seconds / 3600);
+            return "{$hours}小时";
+        } else {
+            $days = floor($seconds / 86400);
+            $hours = floor(($seconds - $days * 86400) / 3600);
+            $minutes = floor(($seconds - $days * 86400 - $hours * 3600) / 60);
+            return "{$days}天, {$hours}小时, {$minutes}分钟";
+        }
     }
 }

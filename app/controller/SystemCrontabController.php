@@ -5,6 +5,7 @@ namespace app\controller;
 use app\model\SystemCrontabCategory;
 use app\model\SystemCrontabNode;
 use app\model\SystemCrontabWarn;
+use app\service\Ssh;
 use support\Db;
 use support\Request;
 use support\Response;
@@ -448,4 +449,59 @@ class SystemCrontabController extends MyCrudController {
         return view('404', ['error' => '示例excel不存在'])->withStatus(404);
     }
 
+//    /**
+//     * 立刻执行
+//     * @param Request $request
+//     * @return Response|void
+//     * @author guoliangchen
+//     * @date 2023/8/16 0016 17:54
+//     */
+//    public function runNow(Request $request){
+//        $id = $request->input('id');
+//        if (empty($id) || $id<=0){
+//            return $this->json(1, '未知定时器');
+//        }
+//        $data = [
+//            'id'=>$id,
+//        ];
+//        $param  = [
+//            'method' => 'runNow',
+//            'args'   => $data
+//        ];
+//        $result = \app\service\crontab\Client::instance()->request($param);
+//        var_dump($result);
+//        if ($result['code']) {
+//            return $this->json(0, 'ok');
+//        }
+//    }
+//
+//    public function sshChannelStatus(Request $request){
+//        list($status,$msg,$data) = Ssh::channelStatus();
+//        return $this->json($status?0:1, $msg,$data);
+//    }
+
+    /**
+     * 获取运行状态
+     * @param Request $request
+     * @return Response|void
+     * @author guoliangchen
+     * @date 2024/4/24 0024 18:40
+     */
+    public function getRunStatus(Request $request) {
+        $id = $request->input('id');
+        if (empty($id) || $id <= 0) {
+            return $this->json(1, '未知定时器');
+        }
+        $data   = [
+            'id' => $id,
+        ];
+        $param  = [
+            'method' => 'getRunStatus',
+            'args'   => $data
+        ];
+        $result = \app\service\crontab\Client::instance()->request($param);
+        if ($result['code']) {
+            return $this->json(0, $result['data']['msg']);
+        }
+    }
 }

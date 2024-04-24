@@ -3,6 +3,7 @@
 namespace app\model;
 
 use plugin\admin\app\model\Base;
+use support\Redis;
 
 /**
  * @property integer $id (主键)
@@ -41,6 +42,10 @@ class SystemCrontabNode extends Base
      */
     public $timestamps = false;
 
+    protected static $_redis_save_key = 'crontab_node_info';
+
+    protected static $_redis_save_time = 3600;
+
     /**
      * 获取节点列表
      * @param $items
@@ -72,5 +77,45 @@ class SystemCrontabNode extends Base
             return $data;
         }
         return [];
+    }
+
+    /**
+     * 获取节点缓存
+     * @return array|mixed
+     * @author guoliangchen
+     * @date 2024/4/24 0024 19:23
+     */
+    public static function getNodeCache(){
+        $data = Redis::get(self::$_redis_save_key);
+        if (empty($data)){
+            $field = ['id','host','alias','port','username','code_dir','index_name'];
+            $data = self::get($field);
+            if ($data){
+                $rds_save_data = [];
+                foreach ($data as $value){
+                    $rds_save_data[$value->id] = [
+                        'host' => $value->host,
+                        'alias' => $value->alias,
+                        'port' => $value->port,
+                        'username' => $value->username,
+                        'code_dir' => $value->code_dir,
+                        'index_name' => $value->index_name,
+                    ];
+                }
+                Redis::setEx(self::$_redis_save_key,self::$_redis_save_time,json_encode($rds_save_data));
+                return $rds_save_data;
+            }
+            return [];
+        }
+        return json_decode($data,true);
+    }
+
+    /**
+     * 删除缓存
+     * @author guoliangchen
+     * @date 2024/4/24 0024 19:23
+     */
+    public static function removeWarnCache(){
+        Redis::del(self::$_redis_save_key);
     }
 }

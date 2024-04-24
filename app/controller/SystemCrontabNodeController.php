@@ -86,6 +86,7 @@ class SystemCrontabNodeController extends MyCrudController {
             ];
             $result                 = \app\service\crontab\Client::instance()->request($param);
             if ($result['code']) {
+                SystemCrontabNode::removeWarnCache();
                 return $this->json(0, 'ok');
             }
             return $this->json(1, $result['msg']);
@@ -116,6 +117,7 @@ class SystemCrontabNodeController extends MyCrudController {
             ];
             $result                 = \app\service\crontab\Client::instance()->request($param);
             if ($result['code']) {
+                SystemCrontabNode::removeWarnCache();
                 return $this->json(0, 'ok');
             }
             return $this->json(1, $result['msg']);
@@ -233,5 +235,29 @@ class SystemCrontabNodeController extends MyCrudController {
             return [false, $validate->getError()];
         }
         return [true, 'ok'];
+    }
+
+    /**
+     * 重写删除
+     * @param Request $request
+     * @return Response
+     * @throws BusinessException
+     * @author guoliangchen
+     * @date 2024/4/24 0024 19:52
+     */
+    public function delete(Request $request): Response
+    {
+        $ids = $this->deleteInput($request);
+        if (empty($ids)) {
+            return $this->json(1, '请选择要删除的节点');
+        }
+        $has_use = Db::table('wa_system_crontab')->where('node_id','in',$ids)->count(['id']);
+        if ($has_use >0){
+            return $this->json(1, "该节点正在被{$has_use}个定时任务使用，请先删除对应定时任务");
+        }
+        $this->doDelete($ids);
+        // 清除缓存
+        SystemCrontabNode::removeWarnCache();
+        return $this->json(0);
     }
 }
