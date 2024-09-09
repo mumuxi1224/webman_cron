@@ -272,16 +272,40 @@
 					},{
 						title: "任务标题",
 						field: "title",
+                        minWidth: 150,
 					},{
 						title: "任务类型",
 						field: "type_name",
+                        minWidth: 100,
 					},{
 						title: "任务执行表达式",
 						field: "rule",
+                        minWidth: 200,
 					},{
 						title: "执行命令",
 						field: "target",
-					},{
+                        minWidth: 250,
+					}
+                    ,{
+                        title: "节点信息",
+                        field: "node_name",
+                        minWidth: 200,
+                    },
+                    {
+                        title: "操作",
+                        toolbar: "#table-bar",
+                        width: '250',
+                    }
+                    ,{
+                        title: "创建时间",
+                        field: "create_time",
+                        minWidth: 200,
+                    },{
+                        title: "任务状态",
+                        field: "status",
+                        toolbar: '#status-bar',
+                        minWidth: 150,
+                    },{
 						title: "已运行次数",
 						field: "running_times",
 					},{
@@ -290,16 +314,6 @@
 					},{
 						title: "备注",
 						field: "remark",
-					},{
-						title: "任务状态",
-						field: "status",
-                        toolbar: '#status-bar'
-					},{
-						title: "创建时间",
-						field: "create_time",
-					},{
-						title: "节点信息",
-						field: "node_name",
 					},{
 						title: "任务分类",
 						field: "category_name",
@@ -327,11 +341,7 @@
                     //
                     //     }
 					// },
-                    {
-						title: "操作",
-						toolbar: "#table-bar",
-                        width: '250',
-					}
+
 				];
 				
 				// 渲染表格
