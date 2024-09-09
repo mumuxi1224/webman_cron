@@ -26,17 +26,31 @@ class Client
      * @param array $param
      * @return mixed
      */
+//    public function request(array $param)
+//    {
+//        $client =  stream_socket_client('tcp://' . getenv('CRONTAB_LISTEN'));
+//        fwrite($client, json_encode($param) . "\n"); // text协议末尾有个换行符"\n"
+//        $result = fgets($client, 10240000);
+//        if(!$result){
+//            fwrite($client, json_encode($param) . "\n"); // text协议末尾有个换行符"\n"
+//            $result = fgets($client, 10240000);
+////            self::$instance = new static();
+//        }
+//        return json_decode($result,true);
+//    }
+
+
     public function request(array $param)
     {
-        $client =  stream_socket_client('tcp://' . getenv('CRONTAB_LISTEN'));
-        fwrite($client, json_encode($param) . "\n"); // text协议末尾有个换行符"\n"
-        $result = fgets($client, 10240000);
-        if(!$result){
-            fwrite($client, json_encode($param) . "\n"); // text协议末尾有个换行符"\n"
-            $result = fgets($client, 10240000);
-//            self::$instance = new static();
+        $listen = config('crontab.task.listen');
+        list($host,$port) = explode(':',$listen);
+        $client = new \Swoole\Client(SWOOLE_SOCK_TCP);
+        if (!$client->connect($host, (int)$port, -1)) {
+            return ['code'=>0,'msg'=>"connect failed. Error: {$client->errCode}"];
         }
-        return json_decode($result,true);
+        $res = $client->send(json_encode($param));
+        $recv =  $client->recv();
+        $client->close();
+        return json_decode($recv,true);
     }
-
 }

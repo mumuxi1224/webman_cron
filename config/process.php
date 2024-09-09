@@ -34,9 +34,9 @@ return [
             ]
         ]
     ],
-    'crontab' => [
-        'handler' => \app\service\crontab\Server::class,
-        'listen'  => 'text://'.getenv('CRONTAB_LISTEN'),
-        'count'   => 1,
-    ],
+//    'crontab' => [
+//        'handler' => \app\service\crontab\Server::class,
+//        'listen'  => 'text://'.getenv('CRONTAB_LISTEN'),
+//        'count'   => 1,
+//    ],
 ];
