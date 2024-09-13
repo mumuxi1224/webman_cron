@@ -104,6 +104,18 @@ class Service
     private $crontabPool = [];
 
     /**
+     * 立即执行任务进程池
+     * @var \app\service\swooleCrontab\Crontab[] array
+     */
+    private $runNowCrontabPool = [];
+
+    private $runNowStartTime = 3;
+
+    private $serverStartTimeStamp = 0;
+
+    private $totalRunJobCount = 0;
+
+    /**
      * 初始化配置
      * @author guoliangchen
      * @date 2024/8/21 上午10:29
@@ -137,6 +149,7 @@ class Service
         $this->initDbAndPoll();
         $this->crontabInit();
         $this->sendSmsMsg();
+        $this->serverStartTimeStamp = time();
     }
 
     /**
@@ -225,23 +238,26 @@ class Service
      * @param $id
      * @param $db
      * @param $data
+     * @param $type 1:正常定时器 2:立即执行
      * @return array|void
      * @author guoliangchen
      * @date 2024/9/5 下午1:33
      */
-    public function execJob($id,$db,$data = []) {
+    public function execJob($id,$db,$data = [],$run_type = 1) {
         if (empty($id)){
             return [false,'参数缺失'];
         }
         if (empty($data)){
-            $data = $db->query("select * from {$this->crontabTable} where id = {$id} and  status = 1 limit 1")->fetch();
+            $status_str = $run_type==1?" and  status = 1":"";
+            $db->setAttribute(\PDO::ATTR_DEFAULT_FETCH_MODE, \PDO::FETCH_ASSOC);
+            $data = $db->query("select * from {$this->crontabTable} where id = {$id} {$status_str} limit 1")->fetch();
             if (!$data){
                 return [false,'未知数据'];
             }
         }
         $now = time();
         // 如果到达了结束时间
-        if ($data['end_time'] > 0 && $now >= $data['end_time']) {
+        if ($run_type == 1 && $data['end_time'] > 0 && $now >= $data['end_time']) {
             $db->query($this->generateUpdateSql($this->crontabTable,['id'=>$data['id']],['status'=>0]));
             return [false,'任务已结束'];
         }
@@ -254,34 +270,62 @@ class Service
             $data['target'] = 'php '.$data['index_name'] .' '. $data['target'];
         }
         $next_minute = $now +  60 - ($now % 60);
-        $this->crontabPool[$data['id']]            = [
-            'id'                  => $data['id'],
-            'target'              => $data['target'],
-            'title'               => $data['title'],
-            'rule'                => $data['rule'],
-            'parameter'           => $data['parameter'],
-            'singleton'           => $data['singleton'],
-            'create_time'         => $now,
-            'end_time'            => $data['end_time'],
-            'single_run_max_time' => $data['single_run_max_time'] ?? 0,
-            'warning_ids'         => $data['warning_ids'],
-            'is_running'          => false,
-            'last_run_time'       => $now,
-            'has_send_sms'        => false,
-            'next_minute'        =>  $next_minute,// 下一分钟时间
-        ];
+        $data['run_type'] = $run_type;
+        if ($run_type == 1){
+            $this->crontabPool[$data['id']]            = [
+                'id'                  => $data['id'],
+                'target'              => $data['target'],
+                'title'               => $data['title'],
+                'rule'                => $data['rule'],
+                'parameter'           => $data['parameter'],
+                'singleton'           => $data['singleton'],
+                'create_time'         => $now,
+                'end_time'            => $data['end_time'],
+                'single_run_max_time' => $data['single_run_max_time'] ?? 0,
+                'warning_ids'         => $data['warning_ids'],
+                'is_running'          => false,
+                'last_run_time'       => $now,
+                'has_send_sms'        => false,
+                'next_minute'        =>  $next_minute,// 下一分钟时间
+                'run_type'              =>$run_type,
+            ];
 
-        $this->crontabPool[$data['id']]['crontab'] = new \app\service\swooleCrontab\Crontab($data['rule'],function ()use ($data){
-            Co::create(function ()use($data) {
-                $can_run = call_user_func([$this, 'beforeRunJob'], $data);
-                if ($can_run) {
-                    list($code, $output, $start_time, $running_time, $last_run_time) = call_user_func([$this, 'runJob'], $data);
-                    call_user_func([$this, 'afterRunJob'], $data, $code, $output, $start_time, $running_time, $last_run_time);
-                }else{
+            $this->crontabPool[$data['id']]['crontab'] = new \app\service\swooleCrontab\Crontab($data['rule'],function ()use ($data){
+                Co::create(function ()use($data) {
+                    $can_run = call_user_func([$this, 'beforeRunJob'], $data);
+                    if ($can_run) {
+                        list($code, $output, $start_time, $running_time, $last_run_time) = call_user_func([$this, 'runJob'], $data);
+                        call_user_func([$this, 'afterRunJob'], $data, $code, $output, $start_time, $running_time, $last_run_time);
+                    }else{
 //                    var_dump('正在运行中');
-                }
+                    }
+                });
             });
-        });
+        }else{
+            $this->runNowCrontabPool[$data['id']]            = [
+                'id'                  => $data['id'],
+                'target'              => $data['target'],
+                'title'               => $data['title'],
+                'rule'                => $data['rule'],
+                'parameter'           => $data['parameter'],
+                'singleton'           => $data['singleton'],
+                'create_time'         => $now,
+                'end_time'            => $data['end_time'],
+                'single_run_max_time' => $data['single_run_max_time'] ?? 0,
+                'warning_ids'         => $data['warning_ids'],
+                'is_running'          => false,
+                'last_run_time'       => $now,
+                'has_send_sms'        => false,
+                'next_minute'        =>  $next_minute,// 下一分钟时间
+                'run_type'              =>$run_type,
+            ];
+            $this->runNowCrontabPool[$data['id']]['crontab'] = \Swoole\Timer::after($this->runNowStartTime * 1000, function () use ($data) {
+                list($code, $output, $start_time, $running_time, $last_run_time) = call_user_func([$this, 'runJob'], $data);
+                call_user_func([$this, 'afterRunJob'], $data, $code, $output, $start_time, $running_time, $last_run_time);
+            });
+
+        }
+
     }
 
     /**
@@ -392,7 +436,7 @@ class Service
 //        $this->debug && $this->writeln('执行定时器任务#' . $data['id'] . ' ' . $data['rule'] . ' ' . $data['target'], boolval($code));
         $endTime      = microtime(true);
         $running_time = round($endTime - $startTime, 6);
-        return [$code, $output, $start_time, $running_time, $this->crontabPool[$data['id']]['last_run_time']];
+        return [$code, $output, $start_time, $running_time, $data['run_type']== 1?$this->crontabPool[$data['id']]['last_run_time']:$this->runNowCrontabPool[$data['id']]['last_run_time']];
     }
 
     /**
@@ -467,13 +511,14 @@ class Service
      * @date 2024/9/5 下午1:34
      */
     private function afterRunJob($data, $code, $output, $start_time, $running_time, $last_run_time) {
+        $this->totalRunJobCount++;
         $end_time   = time();
         $update_arr = [
             "last_running_time = {$last_run_time}",
             "running_times = running_times+1",
         ];
         // 如果到达了结束时间
-        if ($this->crontabPool[$data['id']]['end_time'] > 0 && $end_time >= $this->crontabPool[$data['id']]['end_time']) {
+        if ($data['run_type'] == 1 && $this->crontabPool[$data['id']]['end_time'] > 0 && $end_time >= $this->crontabPool[$data['id']]['end_time']) {
             $update_arr['status'] = 0;
             $this->crontabPool[$data['id']]['crontab']->destroy();
             unset($this->crontabPool[$data['id']]);
@@ -489,6 +534,9 @@ class Service
             if (mb_strlen($output) > $this->output_limit) {
                 $output = mb_substr($output, 0, $this->output_limit);
                 $output .= '...';
+            }
+            if ($data['run_type'] == 2){
+                $output = "立即执行日志：".$output;
             }
             $log_arr = [
                 'crontab_id'   => $data['id'],
@@ -508,21 +556,27 @@ class Service
             self::$dbPoll->put($db);
         }
 
-        if (isset($this->crontabPool[$data['id']])) {
-            $this->crontabPool[$data['id']]['is_running'] = false;
+        if ($data['run_type'] == 2){
+            unset($this->runNowCrontabPool[$data['id']]);
         }
-        // 发送短信
-        if ($code == 1) {
-            $msg = "定时任务：{$data['title']}-ID{$data['id']}-命令：{$data['target']}-运行出错，请去查看";
-            $this->crontabPool[$data['id']]['has_send_sms']  = true;
-            call_user_func([$this, 'createSmsMsg'], $data['warning_ids'], $data['id'], $msg);
-        }
-        elseif (isset($data['single_run_max_time']) && $data['single_run_max_time'] > 0 && $data['warning_ids']) {
-            if ($running_time > $data['single_run_max_time']) {
-                $msg = "定时任务：{$data['title']}-ID{$data['id']}-命令：{$data['target']}-已运行{$running_time}秒，超过超过最大时间{$data['single_run_max_time']}秒，请去查看";
-                // 发送预计信息
+
+        if ($data['run_type'] == 1){
+            if (isset($this->crontabPool[$data['id']])) {
+                $this->crontabPool[$data['id']]['is_running'] = false;
+            }
+            // 发送短信
+            if ($code == 1) {
+                $msg = "定时任务：{$data['title']}-ID{$data['id']}-命令：{$data['target']}-运行出错，请去查看";
                 $this->crontabPool[$data['id']]['has_send_sms']  = true;
                 call_user_func([$this, 'createSmsMsg'], $data['warning_ids'], $data['id'], $msg);
+            }
+            elseif (isset($data['single_run_max_time']) && $data['single_run_max_time'] > 0 && $data['warning_ids']) {
+                if ($running_time > $data['single_run_max_time']) {
+                    $msg = "定时任务：{$data['title']}-ID{$data['id']}-命令：{$data['target']}-已运行{$running_time}秒，超过超过最大时间{$data['single_run_max_time']}秒，请去查看";
+                    // 发送预计信息
+                    $this->crontabPool[$data['id']]['has_send_sms']  = true;
+                    call_user_func([$this, 'createSmsMsg'], $data['warning_ids'], $data['id'], $msg);
+                }
             }
         }
     }
@@ -549,15 +603,15 @@ class Service
 
         // 设置服务器为异步非阻塞模式
         $server->set([
-            'worker_num' => 1,
+            'worker_num'       => 1,
             'enable_coroutine' => true,
-            'max_coroutine' => 3000,
-            'daemonize' => true,
-            'log_file'=>   runtime_path() . '/logs/swoole.log',
-            'log_date_format' => '%Y-%m-%d %H:%M:%S',
-            'log_rotation'=>SWOOLE_LOG_ROTATION_DAILY,
-            'display_errors' => true,
-            'hook_flags' => SWOOLE_HOOK_ALL ,
+            'max_coroutine'    => 3000,
+            'daemonize'        => true,
+            'log_file'         => runtime_path() . '/logs/swoole.log',
+            'log_date_format'  => '%Y-%m-%d %H:%M:%S',
+            'log_rotation'     => SWOOLE_LOG_ROTATION_DAILY,
+            'display_errors'   => true,
+            'hook_flags'       => SWOOLE_HOOK_ALL,
         ]);
 
         $server->on('start', function (Server $server) {
@@ -969,20 +1023,27 @@ class Service
      * @author guoliangchen
      * @date 2024/4/24 0024 18:47
      */
-    function formatSeconds($seconds) {
+    function formatSeconds($seconds): string {
         if ($seconds < 60) {
             return "{$seconds}秒";
         } elseif ($seconds < 3600) {
             $minutes = floor($seconds / 60);
-            return "{$minutes}分钟";
+            $remainingSeconds = $seconds % 60;
+            return "{$minutes}分钟，{$remainingSeconds}秒";
         } elseif ($seconds < 86400) {
             $hours = floor($seconds / 3600);
-            return "{$hours}小时";
+            $remainingSeconds = $seconds % 3600;
+            $minutes = floor($remainingSeconds / 60);
+            $remainingSeconds %= 60;
+            return "{$hours}小时，{$minutes}分钟，{$remainingSeconds}秒";
         } else {
             $days = floor($seconds / 86400);
-            $hours = floor(($seconds - $days * 86400) / 3600);
-            $minutes = floor(($seconds - $days * 86400 - $hours * 3600) / 60);
-            return "{$days}天, {$hours}小时, {$minutes}分钟";
+            $remainingSeconds = $seconds % 86400;
+            $hours = floor($remainingSeconds / 3600);
+            $remainingSeconds %= 3600;
+            $minutes = floor($remainingSeconds / 60);
+            $remainingSeconds %= 60;
+            return "{$days}天, {$hours}小时, {$minutes}分钟, {$remainingSeconds}秒";
         }
     }
 
@@ -1008,8 +1069,89 @@ class Service
                 $return_data['msg'] = '当前任务未运行';
             }
         }
-
-
         return json_encode(['code' => 200, 'msg' => 'ok', 'data' => $return_data]);
+    }
+
+    /**
+     * 立即执行
+     * @param array $param
+     * @return string
+     * @author guoliangchen
+     * @date 2024/9/13 上午9:54
+     */
+    private function runNow(array $param): string {
+        $id  = $param['id'] ?? 0;
+        if (empty($id)){
+            $return_data['msg'] = '参数缺失';
+            return json_encode(['code' => 200, 'msg' => 'ok', 'data' => $return_data]);
+        }
+        if (isset($this->runNowCrontabPool[$id])){
+            if (!$this->runNowCrontabPool[$id]['is_running']){
+                $return_data['msg'] = '定时任务正在准备中，请稍后再试';
+            }else{
+                $cost_time = time() - $this->runNowCrontabPool[$id]['last_run_time'];
+                $run_time_str = $this->formatSeconds($cost_time);
+                $return_data['msg'] = '上一次立即执行任务正在运行中，执行开始时间：'.date('Y-m-d H:i:s',$this->runNowCrontabPool[$id]['last_run_time']).",当前执行耗时：".$run_time_str;
+            }
+            return json_encode(['code' => 200, 'msg' => 'ok', 'data' => $return_data]);
+        }
+        $db = self::$dbPoll->get();
+        $this->execJob($id,$db,[],2);
+        self::$dbPoll->put($db);
+        return json_encode(['code' => 200, 'msg' => 'ok', 'data' => ['msg'=>"定时任务将在{$this->runNowStartTime}秒后开始执行"]]);
+    }
+
+    /**
+     * 获取系统信息
+     * @param array $param
+     * @return string
+     * @author guoliangchen
+     * @date 2024/9/13 上午10:01
+     */
+    private function crontabSystem(array $param): string {
+        if ($this->serverStartTimeStamp){
+            $msg_arr[] = "服务启动时间：".date('Y-m-d H:i:s',$this->serverStartTimeStamp)."，运行时间：".$this->formatSeconds(time() - $this->serverStartTimeStamp);
+        }
+        // 获取当前内存占用
+        $memoryUsage = memory_get_usage();
+        // 获取峰值内存占用
+        $peakMemoryUsage = memory_get_peak_usage();
+
+        // 将字节转换为 MB
+        $memoryUsageMB = number_format($memoryUsage / (1024 * 1024),4);
+        $peakMemoryUsageMB = number_format($peakMemoryUsage / (1024 * 1024),4);
+        $msg_arr[] = "当前内存占用：{$memoryUsageMB}MB，峰值内存占用：{$peakMemoryUsageMB}MB";
+        $running_jobs = 0;
+        $running_now_jobs = count($this->runNowCrontabPool);
+        foreach ($this->crontabPool as $c){
+            if ($c['crontab'] && $c['is_running']){
+                $running_jobs++;
+            }
+        }
+        $msg_arr[] = "当前运行中的定时任务：{$running_jobs}，立即执行中的定时任务：{$running_now_jobs}";
+        // 计算总运行时间（秒）
+        $totalRunTime = time() - $this->serverStartTimeStamp;
+        // 计算每小时和每天的平均次数
+        $hourlyAverage = 0;
+        $dailyAverage = 0;
+
+        if ($totalRunTime > 0) {
+            // 每小时的平均次数
+            $hourlyAverage = $totalRunTime >= 3600 ? round($this->totalRunJobCount / ($totalRunTime / 3600), 2) : 0;
+
+            // 每天的平均次数
+            $dailyAverage = $totalRunTime >= 86400 ? round($this->totalRunJobCount / ($totalRunTime / 86400), 2) : 0;
+        }
+
+        // 如果运行时间不足一小时或一天，显示实际运行次数
+        if ($totalRunTime < 3600) {
+            $hourlyAverage = $this->totalRunJobCount;
+        }
+        if ($totalRunTime < 86400) {
+            $dailyAverage = $this->totalRunJobCount;
+        }
+
+        $msg_arr[] = "当前运行定时任务次数：{$this->totalRunJobCount}，每小时平均运行次数{$hourlyAverage} 次，每天平均运行次数：{$dailyAverage} 次";
+        return json_encode(['code' => 200, 'msg' => 'ok', 'data' => ['msg'=>implode("<br>",$msg_arr) ]]);
     }
 }

@@ -18,6 +18,17 @@
         /*    flex-grow: 1;*/
         /*    margin-right: 5px; !* 按钮间距 *!*/
         /*}*/
+        .custom-pre {
+            background-color: #f5f5f5; /* 背景色 */
+            padding: 10px; /* 内边距 */
+            border: 1px solid #ddd; /* 边框 */
+            font-size: 14px; /* 字体大小 */
+            color: #333; /* 字体颜色 */
+            white-space: pre-wrap; /* 允许换行 */
+            word-wrap: break-word; /* 长单词自动换行 */
+            overflow-y: auto; /* 当内容超出高度时显示滚动条 */
+            max-height: 300px; /* 最大高度限制 */
+        }
     </style>
         <!-- 顶部查询表单 -->
         <div class="layui-card">
@@ -119,6 +130,9 @@
             <button class="pear-btn pear-btn-warming pear-btn-md" lay-event="cron" permission="systemcrontab.cron">
                 <i class="layui-icon layui-icon-engine"></i>时间表达式在线校验
             </button>
+            <button class="pear-btn pear-btn-danger pear-btn-md" lay-event="system" permission="systemcrontab.system">
+                <i class="layui-icon layui-icon-circle"></i>系统运行状况
+            </button>
 <!--            <button class="pear-btn pear-btn-danger pear-btn-md" lay-event="export_cron" permission="systemcrontab.export">-->
 <!--                <i class="layui-icon layui-icon-engine"></i>定时任务导入-->
 <!--            </button>-->
@@ -169,6 +183,7 @@
             const UPDATE_URL = "/system-crontab/update";
             const RUN_LOG_URL = "/system-crontab-log/select";
             const WARN_LOG_URL = "/system-crontab-warn/update";
+            const CRONTAB_SYSTEM_URL = "/system-crontab/crontabSystem";
             const GET_RUN_STATUS = "/system-crontab/getRunStatus";
 
 
@@ -304,7 +319,7 @@
                         title: "任务状态",
                         field: "status",
                         toolbar: '#status-bar',
-                        minWidth: 150,
+                        minWidth: 100,
                     },{
 						title: "已运行次数",
 						field: "running_times",
@@ -365,17 +380,31 @@
                         for (let i = 0; i < res.data.length; i++) {
                             dropdown.render({
                                 elem: '#more_' + res.data[i].id,
-                                data: [{
-                                    title: '查看运行状态',
-                                    row: res.data[i],
-                                    type:'get_run_status',
-                                },
+                                data: [
+                                    {
+                                        title: '查看运行状态',
+                                        row: res.data[i],
+                                        type:'get_run_status',
+                                    },
+                                    {
+                                        title: '立即执行',
+                                        row: res.data[i],
+                                        type:'run_now',
+                                    },
+                                    {
+                                        title: '查看日志',
+                                        row: res.data[i],
+                                        type:'see_run_log',
+                                    },
                                 ],
                                 id: '#more_' + res.data[i].id,
                                 click: function(obj) {
-                                    console.log(obj)
                                     if (obj.type === 'get_run_status') {
                                         get_run_status(obj.row)
+                                    }else if (obj.type === 'run_now'){
+                                        run_now(obj.row)
+                                    }else if (obj.type === 'see_run_log'){
+                                        see_run_log(obj.row)
                                     }
                                     // layer.tips('点击了：' + obj.title, this.elem, {
                                     //     tips: [1, '#5FB878']
@@ -417,6 +446,8 @@
                         export_cron(obj)
                     } else if (obj.event === "ssh_channel_status") {
                         ssh_channel_status()
+                    }else if (obj.event === "system"){
+                        crontabSystem()
                     }
                 });
 
@@ -505,30 +536,6 @@
                     return doRemove(obj.data[PRIMARY_KEY],obj.data['status']);
                 }
 
-                let run_now = function (obj){
-                    let data = {};
-                    data[PRIMARY_KEY] = obj.data[PRIMARY_KEY];
-                    layer.confirm("确定立刻执行此定时任务吗？", {
-                        icon: 3,
-                        title: "提示"
-                    }, function(index) {
-                        layer.close(index);
-                        let loading = layer.load();
-                        $.ajax({
-                            url: RUN_NOW_API,
-                            data: data,
-                            dataType: "json",
-                            type: "post",
-                            success: function(res) {
-                                layer.close(loading);
-                                if (res.code) {
-                                    return layui.popup.failure(res.msg);
-                                }
-                                return layui.popup.success(res.msg, refreshTable);
-                            }
-                        })
-                    });
-                }
 
                 // 删除多行
                 let batchRemove = function(obj) {
@@ -572,8 +579,29 @@
                             });
                         }
                     })
+                }
 
-
+                let crontabSystem = function (){
+                    let loading = layer.load();
+                    $.ajax({
+                        url: CRONTAB_SYSTEM_URL,
+                        data: {},
+                        dataType: "json",
+                        type: "post",
+                        success: function(res) {
+                            layer.close(loading);
+                            if (res.code) {
+                                return layui.popup.failure(res.msg);
+                            }
+                            layer.open({
+                                type: 1,
+                                title: "系统运行状况",
+                                shade: 0.1,
+                                area: [common.isModile()?"60%":"600px", common.isModile()?"80%":"200px"],
+                                content: '<pre class="custom-pre">' + res.msg + '</pre>',
+                            });
+                        }
+                    })
                 }
 
                 // 设置状态
@@ -606,7 +634,6 @@
 
                 // 当前运行状态
                 let get_run_status = function(obj){
-                    console.log(obj)
                     let loading = layer.load();
                     $.ajax({
                         url: GET_RUN_STATUS,
@@ -628,6 +655,35 @@
                     })
                 }
 
+                let run_now = function (obj){
+                    let data = {};
+                    data[PRIMARY_KEY] = obj[PRIMARY_KEY];
+                    layer.confirm("确定立刻执行此定时任务吗？", {
+                        icon: 3,
+                        title: "提示"
+                    }, function(index) {
+                        layer.close(index);
+                        let loading = layer.load();
+                        $.ajax({
+                            url: RUN_NOW_API,
+                            data: data,
+                            dataType: "json",
+                            type: "post",
+                            success: function(res) {
+                                layer.close(loading);
+                                if (res.code) {
+                                    return layui.popup.failure(res.msg);
+                                }
+                                return layui.popup.success(res.msg, refreshTable);
+                            }
+                        })
+                    });
+                }
+
+                let see_run_log = function (obj){
+                    let params = "?crontab_id="+obj.id
+                    window.open('/system-crontab-log/index'+params,'_blank');
+                }
                 // 刷新表格数据
                 window.refreshTable = function(param) {
                     table.reloadData("data-table", {
