@@ -115,6 +115,8 @@ class Service
 
     private $totalRunJobCount = 0;
 
+    private $memoryCheck = null;
+
     /**
      * 初始化配置
      * @author guoliangchen
@@ -150,6 +152,28 @@ class Service
         $this->crontabInit();
         $this->sendSmsMsg();
         $this->serverStartTimeStamp = time();
+        $this->checkMemory();
+    }
+
+    public function checkMemory() {
+        $this->memoryCheck =  new \app\service\swooleCrontab\Crontab('0 */1 * * * *',function (){
+            // 获取当前内存占用
+            $memoryUsage = memory_get_usage();
+            // 获取峰值内存占用
+            $peakMemoryUsage = memory_get_peak_usage();
+
+            // 将字节转换为 MB
+            $memoryUsageMB = number_format($memoryUsage / (1024 * 1024),4);
+            $peakMemoryUsageMB = number_format($peakMemoryUsage / (1024 * 1024),4);
+            gc_collect_cycles(); // 强制执行一次垃圾回收
+            // 获取当前内存占用
+            $memoryUsage1 = memory_get_usage();
+            $memoryUsage1MB = number_format($memoryUsage1 / (1024 * 1024),4);
+
+//            $msg = "之前内存占用：{$memoryUsageMB}MB，峰值内存占用：{$peakMemoryUsageMB}MB，当前内存占用：{$memoryUsage1MB}";
+//            var_dump(date('Y-m-d H:i:s').'：'.$msg);
+//            var_dump(count($this->crontabPool),count($this->smsData['url']),count($this->smsData['warn_insert']));
+        });
     }
 
     /**
@@ -599,14 +623,14 @@ class Service
         // 创建 TCP 服务器
 //        $server = new Server($host, (int)$port, SWOOLE_BASE);
         $server = new Server($host, (int)$port, SWOOLE_PROCESS);
-        echo "监听地址:{$listen}\r\n";
+//        echo "监听地址:{$listen}\r\n";
 
         // 设置服务器为异步非阻塞模式
         $server->set([
             'worker_num'       => 1,
             'enable_coroutine' => true,
             'max_coroutine'    => 3000,
-            'daemonize'        => true,
+//            'daemonize'        => true,
             'log_file'         => runtime_path() . '/logs/swoole.log',
             'log_date_format'  => '%Y-%m-%d %H:%M:%S',
             'log_rotation'     => SWOOLE_LOG_ROTATION_DAILY,
@@ -1124,7 +1148,7 @@ class Service
         $running_jobs = 0;
         $running_now_jobs = count($this->runNowCrontabPool);
         foreach ($this->crontabPool as $c){
-            if ($c['crontab'] && $c['is_running']){
+            if (isset($c['crontab']) && $c['is_running']){
                 $running_jobs++;
             }
         }
