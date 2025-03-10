@@ -117,6 +117,14 @@ class Service
 
     private $memoryCheck = null;
 
+    private $run_log = [
+        'is_running'  => false,
+        'crontab'     => null,
+        'log_update' => [],
+        'log_insert' => [],
+        'rule'        => '0 */1 * * * *',
+    ];
+
     /**
      * 初始化配置
      * @author guoliangchen
@@ -151,6 +159,8 @@ class Service
         $this->initDbAndPoll();
         $this->crontabInit();
         $this->sendSmsMsg();
+        // 批量写入运行日志
+        $this->writeRunLog();
         $this->serverStartTimeStamp = time();
         $this->checkMemory();
     }
@@ -548,10 +558,11 @@ class Service
             unset($this->crontabPool[$data['id']]);
         }
         if ($update_arr){
-            $db = self::$dbPoll->get();
-            $update_sql = $this->generateUpdateSql($this->crontabTable,['id'=>$data['id']],$update_arr);
-            $db->exec($update_sql);
-            self::$dbPoll->put($db);
+//            $db = self::$dbPoll->get();
+//            $update_sql = $this->generateUpdateSql($this->crontabTable,['id'=>$data['id']],$update_arr);
+//            $db->exec($update_sql);
+//            self::$dbPoll->put($db);
+            $this->run_log['log_update'][ $data['id'] ] = $update_arr;
         }
 
         if($this->writeLog){
@@ -574,10 +585,12 @@ class Service
                 'node_id'      => $data['node_id']?:0,
                 'category_id'  => $data['category_id']?:0,
             ];
-            $db = self::$dbPoll->get();
-            $log_ins_sql = $this->generateInsertSql('wa_system_crontab_log',$log_arr);
-            $db->exec($log_ins_sql);
-            self::$dbPoll->put($db);
+//            $db = self::$dbPoll->get();
+//            $log_ins_sql = $this->generateInsertSql('wa_system_crontab_log',$log_arr);
+//            $db->exec($log_ins_sql);
+//            self::$dbPoll->put($db);
+            // 批量新增
+            $this->run_log['log_insert'][] = $log_arr;
         }
 
         if ($data['run_type'] == 2){
@@ -827,6 +840,77 @@ class Service
         $this->smsData['crontab'] = new Crontab($this->smsData['rule'], function (){
             $this->sendSmsMsgDo();
         });
+    }
+
+    private function writeRunLog() {
+        $this->run_log['crontab'] = new Crontab($this->run_log['rule'], function (){
+            $this->writeRunLogDo();
+        });
+    }
+
+    private function writeRunLogDo() {
+        if ($this->run_log['is_running']) {
+            return false;
+        }
+        $this->run_log['is_running'] = true;
+
+        // 运行日志
+        $db = self::$dbPoll->get();
+        if ($this->run_log['log_insert']) {
+            while (true){
+                // 100条执行一次
+                $log_insert = array_splice($this->run_log['log_insert'],0,100);
+                if (!$log_insert){
+                    break;
+                }
+                $log_ins_sql = $this->generateBatchInsertSQLV2('wa_system_crontab_log',$log_insert);
+                $db->exec($log_ins_sql);
+            }
+
+
+            $this->run_log['log_insert'] = [];
+        }
+
+        // 更新日志
+        if ($this->run_log['log_update']){
+            foreach ($this->run_log['log_update'] as $crontab_id=>$log_update){
+                $update_sql = $this->generateUpdateSql($this->crontabTable,['id'=>$crontab_id],$log_update);
+                $db->exec($update_sql);
+            }
+            $this->run_log['log_update'] = [];
+        }
+
+        self::$dbPoll->put($db);
+        $this->run_log['is_running'] = false;
+        return true;
+    }
+
+    function generateBatchInsertSQLV2($tableName, $data) {
+        // 获取字段名
+        $fields = array_keys($data[0]);
+        $fieldsStr = '`' . implode('`,`', $fields) . '`';
+
+        // 构建 VALUES 部分
+        $values = [];
+        foreach ($data as $row) {
+            // 对每个字段的值进行转义和格式化
+            $rowValues = array_map(function ($value) {
+                if (is_null($value)) {
+                    return 'NULL';
+                } elseif (is_numeric($value)) {
+                    return $value;
+                } else {
+                    // 转义单引号和双引号
+                    $escapedValue = str_replace(["'", '"'], ["\'", '\"'], $value);
+                    return "'" . $escapedValue . "'";
+                }
+            }, $row);
+            $values[] = '(' . implode(',', $rowValues) . ')';
+        }
+
+        // 拼接完整的 SQL 语句
+        $sql = "INSERT INTO `{$tableName}` ({$fieldsStr}) VALUES " . implode(',', $values) . ";";
+        return $sql;
     }
 
     /**
