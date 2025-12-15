@@ -858,6 +858,14 @@ class Server {
         }
     }
 
+    /**
+     * 检测返回是否成功
+     * @param $result
+     * @param $output
+     * @return array
+     * @author guoliangchen
+     * @date 2024/4/26 0026 13:52
+     */
     private function checkNodeCommandIsSuccess($result, $output){
         $code = 0;
         $suc_string = 'huibo_job_status:true';

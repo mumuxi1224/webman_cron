@@ -28,7 +28,15 @@ class Client
      */
     public function request(array $param)
     {
-        $client =  stream_socket_client('tcp://' . getenv('CRONTAB_LISTEN'));
+        $client = stream_socket_client(
+            'tcp://' . getenv('CRONTAB_LISTEN'),
+            $errno,
+            $errstr,
+            5 // 设置连接超时为5秒
+        );
+        // 设置读写超时
+        stream_set_timeout($client, 5); // 读取超时5秒
+
         fwrite($client, json_encode($param) . "\n"); // text协议末尾有个换行符"\n"
         $result = fgets($client, 10240000);
         if(!$result){
