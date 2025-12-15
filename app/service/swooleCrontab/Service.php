@@ -605,14 +605,14 @@ class Service
             if ($code == 1) {
                 $msg = "定时任务：{$data['title']}-ID{$data['id']}-命令：{$data['target']}-运行出错，请去查看";
                 $this->crontabPool[$data['id']]['has_send_sms']  = true;
-                call_user_func([$this, 'createSmsMsg'], $data['warning_ids'], $data['id'], $msg);
+                call_user_func([$this, 'createSmsMsg'], $data['warning_ids'], $data['id'], $msg,$output);
             }
             elseif (isset($data['single_run_max_time']) && $data['single_run_max_time'] > 0 && $data['warning_ids']) {
                 if ($running_time > $data['single_run_max_time']) {
                     $msg = "定时任务：{$data['title']}-ID{$data['id']}-命令：{$data['target']}-已运行{$running_time}秒，超过超过最大时间{$data['single_run_max_time']}秒，请去查看";
                     // 发送预计信息
                     $this->crontabPool[$data['id']]['has_send_sms']  = true;
-                    call_user_func([$this, 'createSmsMsg'], $data['warning_ids'], $data['id'], $msg);
+                    call_user_func([$this, 'createSmsMsg'], $data['warning_ids'], $data['id'], $msg,$output);
                 }
             }
         }
@@ -791,7 +791,7 @@ class Service
      * @author guoliangchen
      * @date 2024/8/22 上午9:49
      */
-    private function createSmsMsg($warning_ids, $crontab_id, string $msg = '') {
+    private function createSmsMsg($warning_ids, $crontab_id, string $msg = '',string $output = '') {
         if (!$warning_ids) {
             return false;
         }
@@ -823,6 +823,13 @@ class Service
                         'mobile' => $warn_info[$warning_id]['mobile'],
                         'debug'  => $this->debug,
                     ];
+                    $type = 0;
+                    if ($output){
+                        if (stripos($output,'执行返回false') !== false){
+                            $type = 1;
+                        }
+                    }
+                    $url_params['type'] = $type;
                     $url_params_str         = http_build_query($url_params);
                     $url_params_str         = $base_url . '?' . $url_params_str;
                     $this->smsData['url'][] = $url_params_str;

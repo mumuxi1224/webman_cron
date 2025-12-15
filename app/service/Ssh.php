@@ -80,7 +80,8 @@ class Ssh {
 //            ->withPassword('password')
 //            ->withPrivateKey($rsa_file)
             ->withPrivateKeyContent(self::$privateKeyContent[$data['node_id']])
-            ->timeout(1800)
+//            ->timeout(1800)
+            ->timeout(86400)
             ->connect();
         if ($data['code_dir']) {
             $data['target'] = 'cd ' . $data['code_dir'] . ' && ' . $data['target'];
@@ -95,6 +96,10 @@ class Ssh {
         $output  = $command->getOutput();
         $error   = $command->getError();
         $exc = $output . $error;
+
+        if ($connection->isConnected()) {
+            $connection->disconnect();
+        }
         if (strpos($exc, 'No such file or directory')!==false) {
             return [true, '请检查代码运行路径' . $data['code_dir'] . '是否存在！-'.$exc];
         }
