@@ -140,19 +140,30 @@
                     type: "datetime",
                 });
             })
-
+            function getParameterByName(name, url) {
+                if (!url) url = window.location.href;
+                name = name.replace(/[\[\]]/g, '\\$&');
+                var regex = new RegExp('[?&]' + name + '(=([^&#]*)|&|#|$)'),
+                    results = regex.exec(url);
+                if (!results) return null;
+                if (!results[2]) return '';
+                return decodeURIComponent(results[2].replace(/\+/g, ' '));
+            }
+            // 使用函数获取crontab_id参数
+            var crontabId = getParameterByName('crontab_id');
+            if (crontabId<0)crontabId = '0'
             // 字段 定时任务 crontab_id
             layui.use(["jquery", "xmSelect", "popup"], function() {
                 layui.$.ajax({
                     url: "/system-crontab-log/getCrontabList",
                     dataType: "json",
                     success: function (res) {
-                        let value = layui.$("#sex").attr("value");
-                        let initValue = value ? value.split(",") : [];
+                        // let value = layui.$("#sex").attr("value");
+                        let initValue = crontabId ? crontabId.split(",") : [];
                         layui.xmSelect.render({
                             el: "#crontab_id",
                             name: "crontab_id",
-                            // initValue: initValue,
+                            initValue: initValue,
                             data: res.data.crontab_list,
                             // model: {"icon":"hidden","label":{"type":"text"}},
                             clickClose: true,
@@ -244,6 +255,10 @@
                     }
 				];
 
+                let temp_where  = {field:PRIMARY_KEY,order:'desc'}
+                if (crontabId > 0){
+                    temp_where.crontab_id = crontabId
+                }
 				// 渲染表格
 				table.render({
 				    elem: "#data-table",
@@ -254,7 +269,7 @@
 				    size: "lg",
 				    toolbar: "#table-toolbar",
 				    autoSort: false,
-                    where:{field:PRIMARY_KEY,order:'desc'},
+                    where:temp_where,
 				    defaultToolbar: [{
 				        title: "刷新",
 				        layEvent: "refresh",

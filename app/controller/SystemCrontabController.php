@@ -504,4 +504,40 @@ class SystemCrontabController extends MyCrudController {
             return $this->json(0, $result['data']['msg']);
         }
     }
+
+    /**
+     * 立即执行
+     * @param Request $request
+     * @return Response|void
+     * @author guoliangchen
+     * @date 2024/9/11 上午11:03
+     */
+    public function runNow(Request $request){
+        $id = $request->input('id');
+        if (empty($id) || $id<=0){
+            return $this->json(1, '未知定时器');
+        }
+        $data = [
+            'id'=>$id,
+        ];
+        $param  = [
+            'method' => 'runNow',
+            'args'   => $data
+        ];
+        $result = \app\service\crontab\Client::instance()->request($param);
+        if ($result['code']) {
+            return $this->json(0, $result['data']['msg']);
+        }
+    }
+
+    public function crontabSystem(Request $request) {
+        $param  = [
+            'method' => 'crontabSystem',
+            'args'   => []
+        ];
+        $result = \app\service\crontab\Client::instance()->request($param);
+        if ($result['code']) {
+            return $this->json(0, $result['data']['msg']);
+        }
+    }
 }

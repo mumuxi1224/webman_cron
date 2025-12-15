@@ -166,7 +166,9 @@ class Server {
         $this->crontabInit();
         $this->watchCrontabWarning();
         $this->sendSmsMsg();
-
+        ini_set('memory_limit', '256M');
+        \Swoole\Runtime::enableCoroutine();
+        \Swoole\Coroutine::set(['enable_deadlock_check' => false]);
         DefaultHandler::setDefaultHandler(SwooleHandler::class);
     }
 
@@ -264,8 +266,9 @@ class Server {
                 'has_send_sms'       => $now
             ];
             $this->crontabPool[$data['id']]['crontab'] = new Crontab($data['rule'], function () use ($data, $_that) {
-                \Swoole\Runtime::enableCoroutine();
-                \Swoole\Coroutine::set(['enable_deadlock_check' => false]);
+                var_dump($data['rule']);
+//                \Swoole\Runtime::enableCoroutine();
+//                \Swoole\Coroutine::set(['enable_deadlock_check' => false]);
                 go(function () use ($data, $_that) {
                     $can_run = call_user_func([$_that, 'beforeRunJob'], $data);
                     if ($can_run) {
@@ -465,8 +468,8 @@ class Server {
         $_that                         = $this;
         $this->watchCrontab['crontab'] = [
             'crontab' => new Crontab($this->watchCrontab['rule'], function () use ($_that) {
-                \Swoole\Runtime::enableCoroutine();
-                \Swoole\Coroutine::set(['enable_deadlock_check' => false]);
+//                \Swoole\Runtime::enableCoroutine();
+//                \Swoole\Coroutine::set(['enable_deadlock_check' => false]);
                 go(function () use ($_that) {
                     call_user_func([$_that, 'watchCrontabWarningDo']);
                 });
@@ -808,8 +811,8 @@ class Server {
     private function sendSmsMsg() {
         $_that                    = $this;
         $this->smsData['crontab'] = new Crontab($this->smsData['rule'], function () use ($_that) {
-            \Swoole\Runtime::enableCoroutine();
-            \Swoole\Coroutine::set(['enable_deadlock_check' => false]);
+//            \Swoole\Runtime::enableCoroutine();
+//            \Swoole\Coroutine::set(['enable_deadlock_check' => false]);
             go(function () use ($_that) {
                 call_user_func([$_that, 'sendSmsMsgDo']);
             });
