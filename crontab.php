@@ -1,7 +1,7 @@
 <?php
 require_once __DIR__ . '/vendor/autoload.php';
 date_default_timezone_set('Asia/Shanghai');
-ini_set('memory_limit', '512M');
+ini_set('memory_limit', '1024M');
 ini_set('display_errors', 'on');
 error_reporting(E_ALL);
 set_error_handler(function ($errno, $errstr, $errfile, $errline) {
