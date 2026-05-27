@@ -558,11 +558,11 @@ class Service
             unset($this->crontabPool[$data['id']]);
         }
         if ($update_arr){
-//            $db = self::$dbPoll->get();
-//            $update_sql = $this->generateUpdateSql($this->crontabTable,['id'=>$data['id']],$update_arr);
-//            $db->exec($update_sql);
-//            self::$dbPoll->put($db);
-            $this->run_log['log_update'][ $data['id'] ] = $update_arr;
+            $db = self::$dbPoll->get();
+            $update_sql = $this->generateUpdateSql($this->crontabTable,['id'=>$data['id']],$update_arr);
+            $db->exec($update_sql);
+            self::$dbPoll->put($db);
+//            $this->run_log['log_update'][ $data['id'] ] = $update_arr;
         }
 
         if($this->writeLog){
@@ -882,7 +882,10 @@ class Service
         if ($this->run_log['log_update']){
             foreach ($this->run_log['log_update'] as $crontab_id=>$log_update){
                 $update_sql = $this->generateUpdateSql($this->crontabTable,['id'=>$crontab_id],$log_update);
-                $db->exec($update_sql);
+                $affected = $db->exec($update_sql);
+                if (!$affected){
+                    $this->writeln("执行更新SQL：{$update_sql}", false);
+                }
             }
             $this->run_log['log_update'] = [];
         }
@@ -980,6 +983,7 @@ class Service
             }
         }else{
             $data = json_decode($data,true);
+            $data = array_column($data,null,'warn_id');
         }
         self::$redisPoll->put($rds);
         return $data;
