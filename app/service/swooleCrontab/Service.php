@@ -219,7 +219,7 @@ class Service
                 ->withCharset('utf8mb4')
                 ->withUsername(getenv('DB_USER'))
                 ->withPassword(getenv('DB_PASSWORD'))
-                , 10);
+                , 8);
         }
 
         // 初始化redis
@@ -243,7 +243,7 @@ class Service
                 ->withAuth($redis_password)
                 ->withDbIndex((int)getenv('REDIS_DATABASE'))
                 ->withTimeout(1)
-            ,10);
+            ,8);
         }
     }
 
@@ -551,27 +551,24 @@ class Service
             "last_running_time = {$last_run_time}",
             "running_times = running_times+1",
         ];
-        // 如果到达了结束时间
+        // 标记是否需要销毁
+        $need_destroy = false;
         if ($data['run_type'] == 1 && $this->crontabPool[$data['id']]['end_time'] > 0 && $end_time >= $this->crontabPool[$data['id']]['end_time']) {
             $update_arr['status'] = 0;
-            $this->crontabPool[$data['id']]['crontab']->destroy();
-            unset($this->crontabPool[$data['id']]);
+            $need_destroy         = true;
         }
-        if ($update_arr){
-            $db = self::$dbPoll->get();
-            $update_sql = $this->generateUpdateSql($this->crontabTable,['id'=>$data['id']],$update_arr);
-            $db->exec($update_sql);
-            self::$dbPoll->put($db);
-//            $this->run_log['log_update'][ $data['id'] ] = $update_arr;
-        }
+        $db         = self::$dbPoll->get();
+        $update_sql = $this->generateUpdateSql($this->crontabTable, ['id' => $data['id']], $update_arr);
+        $db->exec($update_sql);
+        self::$dbPoll->put($db);
 
-        if($this->writeLog){
+        if ($this->writeLog) {
             if (mb_strlen($output) > $this->output_limit) {
                 $output = mb_substr($output, 0, $this->output_limit);
                 $output .= '...';
             }
-            if ($data['run_type'] == 2){
-                $output = "立即执行日志：".$output;
+            if ($data['run_type'] == 2) {
+                $output = "立即执行日志：" . $output;
             }
             $log_arr = [
                 'crontab_id'   => $data['id'],
@@ -582,38 +579,42 @@ class Service
                 'running_time' => $running_time,
                 'create_time'  => $start_time,
                 'update_time'  => $end_time,
-                'node_id'      => $data['node_id']?:0,
-                'category_id'  => $data['category_id']?:0,
+                'node_id'      => $data['node_id'] ?? 0,
+                'category_id'  => $data['category_id'] ?? 0,
             ];
-//            $db = self::$dbPoll->get();
-//            $log_ins_sql = $this->generateInsertSql('wa_system_crontab_log',$log_arr);
-//            $db->exec($log_ins_sql);
-//            self::$dbPoll->put($db);
             // 批量新增
             $this->run_log['log_insert'][] = $log_arr;
         }
 
-        if ($data['run_type'] == 2){
+        if ($data['run_type'] == 2) {
             unset($this->runNowCrontabPool[$data['id']]);
         }
 
-        if ($data['run_type'] == 1){
+        if ($data['run_type'] == 1) {
             if (isset($this->crontabPool[$data['id']])) {
                 $this->crontabPool[$data['id']]['is_running'] = false;
             }
             // 发送短信
             if ($code == 1) {
                 $msg = "定时任务：{$data['title']}-ID{$data['id']}-命令：{$data['target']}-运行出错，请去查看";
-                $this->crontabPool[$data['id']]['has_send_sms']  = true;
-                call_user_func([$this, 'createSmsMsg'], $data['warning_ids'], $data['id'], $msg,$output);
+                if (isset($this->crontabPool[$data['id']])) {
+                    $this->crontabPool[$data['id']]['has_send_sms'] = true;
+                }
+                call_user_func([$this, 'createSmsMsg'], $data['warning_ids'], $data['id'], $msg, $output);
             }
             elseif (isset($data['single_run_max_time']) && $data['single_run_max_time'] > 0 && $data['warning_ids']) {
                 if ($running_time > $data['single_run_max_time']) {
                     $msg = "定时任务：{$data['title']}-ID{$data['id']}-命令：{$data['target']}-已运行{$running_time}秒，超过超过最大时间{$data['single_run_max_time']}秒，请去查看";
-                    // 发送预计信息
-                    $this->crontabPool[$data['id']]['has_send_sms']  = true;
-                    call_user_func([$this, 'createSmsMsg'], $data['warning_ids'], $data['id'], $msg,$output);
+                    if (isset($this->crontabPool[$data['id']])) {
+                        $this->crontabPool[$data['id']]['has_send_sms'] = true;
+                    }
+                    call_user_func([$this, 'createSmsMsg'], $data['warning_ids'], $data['id'], $msg, $output);
                 }
+            }
+            // 最后才销毁，确保预警逻辑先执行
+            if ($need_destroy) {
+                $this->crontabPool[$data['id']]['crontab']->destroy();
+                unset($this->crontabPool[$data['id']]);
             }
         }
     }
