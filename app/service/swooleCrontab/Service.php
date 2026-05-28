@@ -1362,4 +1362,33 @@ class Service
         $msg_arr[] = "当前运行定时任务次数：{$this->totalRunJobCount}，每小时平均运行次数{$hourlyAverage} 次，每天平均运行次数：{$dailyAverage} 次";
         return json_encode(['code' => 200, 'msg' => 'ok', 'data' => ['msg'=>implode("<br>",$msg_arr) ]]);
     }
+
+    /**
+     * 获取正在运行中的任务及耗时
+     * @param array $param
+     * @return string
+     * @author guoliangchen
+     */
+    private function getRunningTasks(array $param): string {
+        $now = time();
+        $running_tasks = [];
+        foreach ($this->crontabPool as $task) {
+            if ($task['is_running']) {
+                $elapsed = $now - $task['last_run_time'];
+                $running_tasks[] = [
+                    'id'          => $task['id'],
+                    'title'       => $task['title'],
+                    'target'      => $task['target'],
+                    'start_time'  => date('Y-m-d H:i:s', $task['last_run_time']),
+                    'elapsed'     => $elapsed,
+                    'elapsed_str' => $this->formatSeconds($elapsed),
+                ];
+            }
+        }
+        // 按耗时降序
+        usort($running_tasks, function ($a, $b) {
+            return $b['elapsed'] - $a['elapsed'];
+        });
+        return json_encode(['code' => 200, 'msg' => 'ok', 'data' => $running_tasks]);
+    }
 }

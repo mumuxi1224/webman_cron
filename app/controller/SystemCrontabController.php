@@ -540,4 +540,21 @@ class SystemCrontabController extends MyCrudController {
             return $this->json(0, $result['data']['msg']);
         }
     }
+
+    /**
+     * 获取正在运行中的任务及耗时
+     * @param Request $request
+     * @return Response
+     */
+    public function getRunningTasks(Request $request) {
+        $param  = [
+            'method' => 'getRunningTasks',
+            'args'   => []
+        ];
+        $result = \app\service\crontab\Client::instance()->request($param);
+        if ($result['code']) {
+            return $this->json(0, 'ok', $result['data']);
+        }
+        return $this->json(1, $result['msg'] ?? '获取失败');
+    }
 }
