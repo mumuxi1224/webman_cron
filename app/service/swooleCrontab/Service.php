@@ -123,6 +123,8 @@ class Service
         'log_update' => [],
         'log_insert' => [],
         'rule'        => '0 */1 * * * *',
+        'task_update' => [],
+        'task_update_crontab' => null,
     ];
 
     /**
@@ -161,6 +163,8 @@ class Service
         $this->sendSmsMsg();
         // 批量写入运行日志
         $this->writeRunLog();
+        // 批量更新任务状态
+        $this->flushTaskUpdate();
         $this->serverStartTimeStamp = time();
         $this->checkMemory();
     }
@@ -397,12 +401,19 @@ class Service
         }
         // 如果到达了结束时间
         if ($this->crontabPool[$data['id']]['end_time'] > 0 && time() >= $this->crontabPool[$data['id']]['end_time']) {
-            $this->crontabPool[$data['id']]['crontab']->destroy();
-            unset($this->crontabPool[$data['id']]);
+            // 取出累积的 count
+            $accumulated = $this->run_log['task_update'][$data['id']]['count'] ?? 0;
+            unset($this->run_log['task_update'][$data['id']]);
             $db = self::$dbPoll->get();
-            $update_sql = $this->generateUpdateSql($this->crontabTable,['id'=>$data['id']],['status = 0']);
+            $update_sql = $this->generateUpdateSql($this->crontabTable, ['id' => $data['id']], [
+                'status' => 0,
+                "running_times = running_times + {$accumulated}",
+                "last_running_time = " . time(),
+            ]);
             $db->exec($update_sql);
             self::$dbPoll->put($db);
+            $this->crontabPool[$data['id']]['crontab']->destroy();
+            unset($this->crontabPool[$data['id']]);
             return false;
         }
         $this->crontabPool[$data['id']]['is_running']    = true;
@@ -547,20 +558,39 @@ class Service
     private function afterRunJob($data, $code, $output, $start_time, $running_time, $last_run_time) {
         $this->totalRunJobCount++;
         $end_time   = time();
-        $update_arr = [
-            "last_running_time = {$last_run_time}",
-            "running_times = running_times+1",
-        ];
+
         // 标记是否需要销毁
         $need_destroy = false;
-        if ($data['run_type'] == 1 && $this->crontabPool[$data['id']]['end_time'] > 0 && $end_time >= $this->crontabPool[$data['id']]['end_time']) {
-            $update_arr['status'] = 0;
-            $need_destroy         = true;
+        if ($data['run_type'] == 1 && isset($this->crontabPool[$data['id']]) && $this->crontabPool[$data['id']]['end_time'] > 0 && $end_time >= $this->crontabPool[$data['id']]['end_time']) {
+            $need_destroy = true;
         }
-        $db         = self::$dbPoll->get();
-        $update_sql = $this->generateUpdateSql($this->crontabTable, ['id' => $data['id']], $update_arr);
-        $db->exec($update_sql);
-        self::$dbPoll->put($db);
+
+        // 累积运行次数，等 5 分 30 秒批量刷
+        if ($data['run_type'] == 1) {
+            if (isset($this->run_log['task_update'][$data['id']])) {
+                $this->run_log['task_update'][$data['id']]['count']++;
+                $this->run_log['task_update'][$data['id']]['last_running_time'] = $last_run_time;
+            } else {
+                $this->run_log['task_update'][$data['id']] = [
+                    'count'             => 1,
+                    'last_running_time' => $last_run_time,
+                ];
+            }
+        }
+
+        // 需要停用的任务，立即执行更新（带上累积的 count）
+        if ($need_destroy) {
+            $accumulated = $this->run_log['task_update'][$data['id']]['count'] ?? 1;
+            unset($this->run_log['task_update'][$data['id']]);
+            $db = self::$dbPoll->get();
+            $update_sql = $this->generateUpdateSql($this->crontabTable, ['id' => $data['id']], [
+                'status' => 0,
+                "running_times = running_times + {$accumulated}",
+                "last_running_time = {$last_run_time}",
+            ]);
+            $db->exec($update_sql);
+            self::$dbPoll->put($db);
+        }
 
         if ($this->writeLog) {
             if (mb_strlen($output) > $this->output_limit) {
@@ -729,6 +759,7 @@ class Service
         $param['create_time'] = $param['update_time'] = time();
         $db = self::$dbPoll->get();
         $insert_sql = $this->generateInsertSql($this->crontabTable,$param);
+        var_dump($insert_sql);
         $db->query($insert_sql);
         $id = $db->lastInsertId();
         self::$dbPoll->put($db);
@@ -894,6 +925,64 @@ class Service
         self::$dbPoll->put($db);
         $this->run_log['is_running'] = false;
         return true;
+    }
+
+    /**
+     * 批量更新任务状态定时器
+     * @author guoliangchen
+     */
+    private function flushTaskUpdate() {
+        $this->run_log['task_update_crontab'] = new Crontab('30 */5 * * * *', function () {
+            $this->flushTaskUpdateDo();
+        });
+    }
+
+    /**
+     * 执行批量更新任务状态
+     * @author guoliangchen
+     */
+    private function flushTaskUpdateDo() {
+        if (empty($this->run_log['task_update'])) {
+            return;
+        }
+        $chunks = array_chunk($this->run_log['task_update'], 20, true);
+        $this->run_log['task_update'] = [];
+        $db = self::$dbPoll->get();
+        foreach ($chunks as $chunk) {
+            $sql = $this->generateBatchUpdateSql($this->crontabTable, $chunk);
+            if ($sql) {
+                $db->exec($sql);
+            }
+        }
+        self::$dbPoll->put($db);
+    }
+
+    /**
+     * 生成批量更新 SQL（CASE WHEN）
+     * @param string $tableName
+     * @param array $data [id => ['count' => N, 'last_running_time' => T], ...]
+     * @return string
+     * @author guoliangchen
+     */
+    private function generateBatchUpdateSql(string $tableName, array $data): string {
+        if (empty($data)) {
+            return '';
+        }
+        $ids = array_keys($data);
+        $lastRunningTimeCases = [];
+        $runningTimesCases = [];
+        foreach ($data as $id => $item) {
+            $id = intval($id);
+            $lastRunningTimeCases[] = "WHEN {$id} THEN " . intval($item['last_running_time']);
+            $runningTimesCases[] = "WHEN {$id} THEN running_times + " . intval($item['count']);
+        }
+        $idsStr = implode(',', $ids);
+        $lastRunningTimeStr = implode(' ', $lastRunningTimeCases);
+        $runningTimesStr = implode(' ', $runningTimesCases);
+        return "UPDATE `{$tableName}` SET "
+            . "`last_running_time` = CASE id {$lastRunningTimeStr} END, "
+            . "`running_times` = CASE id {$runningTimesStr} END "
+            . "WHERE id IN ({$idsStr})";
     }
 
     function generateBatchInsertSQLV2($tableName, $data) {
