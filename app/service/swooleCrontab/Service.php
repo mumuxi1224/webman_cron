@@ -674,7 +674,7 @@ class Service
             'worker_num'       => 1,
             'enable_coroutine' => true,
             'max_coroutine'    => 3000,
-//            'daemonize'        => true,
+            'daemonize'        => true,
             'log_file'         => runtime_path() . '/logs/swoole.log',
             'log_date_format'  => '%Y-%m-%d %H:%M:%S',
             'log_rotation'     => SWOOLE_LOG_ROTATION_DAILY,
@@ -758,8 +758,7 @@ class Service
         unset($param['rsa']);
         $param['create_time'] = $param['update_time'] = time();
         $db = self::$dbPoll->get();
-        $insert_sql = $this->generateInsertSql($this->crontabTable,$param);
-        var_dump($insert_sql);
+        $insert_sql = $this->generateInsertSql($this->crontabNodeTable,$param);
         $db->query($insert_sql);
         $id = $db->lastInsertId();
         self::$dbPoll->put($db);
