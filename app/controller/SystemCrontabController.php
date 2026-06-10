@@ -547,9 +547,10 @@ class SystemCrontabController extends MyCrudController {
      * @return Response
      */
     public function getRunningTasks(Request $request) {
+        $minElapsed = (int)$request->input('min_elapsed', 0);
         $param  = [
             'method' => 'getRunningTasks',
-            'args'   => []
+            'args'   => ['min_elapsed' => $minElapsed]
         ];
         $result = \app\service\crontab\Client::instance()->request($param);
         if ($result['code']) {

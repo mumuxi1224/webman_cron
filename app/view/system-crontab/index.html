@@ -613,7 +613,7 @@
             let loading = layer.load();
             $.ajax({
                 url: RUNNING_TASKS_URL,
-                data: {},
+                data: {min_elapsed: 60},
                 dataType: "json",
                 type: "post",
                 success: function(res) {
@@ -621,17 +621,19 @@
                     if (res.code) {
                         return layui.popup.failure(res.msg);
                     }
-                    let html = '<table class="layui-table"><thead><tr>'
-                        + '<th>ID</th><th>任务标题</th><th>执行命令</th><th>开始时间</th><th>已运行</th>'
-                        + '</tr></thead><tbody>';
-                    for (let i = 0; i < res.data.length; i++) {
-                        let row = res.data[i];
-                        html += '<tr><td>' + row.id + '</td><td>' + row.title + '</td><td>' + row.target
-                            + '</td><td>' + row.start_time + '</td><td>' + row.elapsed_str + '</td></tr>';
-                    }
-                    html += '</tbody></table>';
+                    let html = '<p style="padding:10px 15px;font-size:14px;color:#333;">运行超过1分钟的任务数：<strong>' + res.data.length + '</strong></p>';
                     if (res.data.length === 0) {
-                        html = '<p style="text-align:center;padding:20px;">暂无运行中的任务</p>';
+                        html += '<p style="text-align:center;padding:20px;">暂无运行超过1分钟的任务</p>';
+                    } else {
+                        html += '<table class="layui-table"><thead><tr>'
+                            + '<th>ID</th><th>任务标题</th><th>执行表达式</th><th>执行命令</th><th>开始时间</th><th>已运行</th>'
+                            + '</tr></thead><tbody>';
+                        for (let i = 0; i < res.data.length; i++) {
+                            let row = res.data[i];
+                            html += '<tr><td>' + row.id + '</td><td>' + row.title + '</td><td>' + row.rule
+                                + '</td><td>' + row.target + '</td><td>' + row.start_time + '</td><td>' + row.elapsed_str + '</td></tr>';
+                        }
+                        html += '</tbody></table>';
                     }
                     layer.open({
                         type: 1,

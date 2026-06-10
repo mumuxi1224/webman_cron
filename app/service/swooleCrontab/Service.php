@@ -6,14 +6,10 @@ use GuzzleHttp\Client;
 use GuzzleHttp\DefaultHandler;
 use GuzzleHttp\Pool;
 use GuzzleHttp\Psr7\Request;
-use mysql_xdevapi\BaseResult;
 use Swoole\Database\PDOConfig;
 use Swoole\Database\PDOPool;
 use Swoole\Server;
 use Swoole\Coroutine as Co;
-use Swoole\Coroutine\MySQL;
-use Swoole\Coroutine\Redis;
-use Swoole\Coroutine\Scheduler;
 use Swoole\Timer;
 use Yurun\Util\Swoole\Guzzle\SwooleHandler;
 use Swoole\Database\RedisConfig;
@@ -24,16 +20,6 @@ class Service
      * @var \Swoole\Database\PDOPool;
      */
     private static $dbPoll = null;
-
-    /**
-     * @var \Swoole\Coroutine\MySQL
-     */
-    private static $db = null;
-
-    /**
-     * @var \Swoole\Coroutine\Redis
-     */
-    private static $redis = null;
 
     /**
      * @var \Swoole\Database\RedisPool;
@@ -196,23 +182,6 @@ class Service
      * @date 2024/8/20 下午6:02
      */
     private function initDbAndPoll() {
-        // 初始化数据库
-        if (is_null(self::$db)){
-            self::$db = new MySQL();
-//            Co\run(function () {
-//                self::$db->connect([
-//                    'host'     => getenv('DB_HOST'),
-//                    'port'     => getenv('DB_PORT'),
-//                    'user'     => getenv('DB_USER'),
-//                    'password' => getenv('DB_PASSWORD'),
-//                    'database' => getenv('DB_NAME'),
-//                ]);
-//                if (!self::$db->connected){
-//                    throw new \Exception('数据库连接失败:'.self::$db->connect_error);
-//                }
-//            });
-        }
-
         // 初始化数据库连接池
         if (is_null(self::$dbPoll)) {
             self::$dbPoll = new PDOPool((new PDOConfig)
@@ -224,19 +193,6 @@ class Service
                 ->withUsername(getenv('DB_USER'))
                 ->withPassword(getenv('DB_PASSWORD'))
                 , 8);
-        }
-
-        // 初始化redis
-        if (is_null(self::$redis)){
-//            Co\run(function () {
-//                self::$redis = new Redis();
-//                self::$redis->connect(getenv('REDIS_HOST'), (int)getenv('REDIS_PORT'));
-//                $redis_password = getenv('REDIS_PASSWORD');
-//                if ($redis_password) {
-//                    self::$redis->auth($redis_password);
-//                }
-//                self::$redis->select((int)getenv('REDIS_DATABASE'));
-//            });
         }
 
         if (is_null(self::$redisPoll)){
@@ -1371,13 +1327,18 @@ class Service
      */
     private function getRunningTasks(array $param): string {
         $now = time();
+        $minElapsed = $param['min_elapsed'] ?? 0;
         $running_tasks = [];
         foreach ($this->crontabPool as $task) {
             if ($task['is_running']) {
                 $elapsed = $now - $task['last_run_time'];
+                if ($elapsed < $minElapsed) {
+                    continue;
+                }
                 $running_tasks[] = [
                     'id'          => $task['id'],
                     'title'       => $task['title'],
+                    'rule'        => $task['rule'] ?? '',
                     'target'      => $task['target'],
                     'start_time'  => date('Y-m-d H:i:s', $task['last_run_time']),
                     'elapsed'     => $elapsed,
